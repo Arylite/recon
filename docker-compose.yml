@@ -1,0 +1,25 @@
+services:
+  backend:
+    image: ghcr.io/arylite/valorant-store-alert:latest
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      API_TOKEN: ${API_TOKEN:?set API_TOKEN in .env}
+      SECRET: ${SECRET:?set SECRET in .env}
+      CHECK_MINUTES: ${CHECK_MINUTES:-15}
+    volumes:
+      - data:/data
+
+  # Public HTTPS entry for the phone; no port is published on the host.
+  # Named tunnel: its public hostname must point to http://backend:8080 in the Cloudflare dashboard.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env}
+    depends_on:
+      - backend
+
+volumes:
+  data:

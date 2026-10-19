@@ -1,0 +1,4 @@
+node_modules
+dist
+data
+catalog.seed.json
