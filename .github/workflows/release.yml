@@ -1,8 +1,15 @@
 name: Release
 
+# Every push to main that passes CI publishes the image and a signed APK as a new release.
 on:
   push:
-    tags: ["v*.*.*"]
+    branches: [main]
+  workflow_dispatch:
+
+# Releases go out in push order; a newer push waits instead of cancelling one half published.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -16,7 +23,7 @@ jobs:
       version: ${{ steps.tag.outputs.version }}
     steps:
       - id: tag
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: echo "version=1.0.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build
@@ -48,8 +55,8 @@ jobs:
           push: true
           # GHCR requires a lowercase repository name.
           tags: |
-            ghcr.io/arylite/valorant-store-alert:${{ needs.version.outputs.version }}
-            ghcr.io/arylite/valorant-store-alert:latest
+            ghcr.io/arylite/recon:${{ needs.version.outputs.version }}
+            ghcr.io/arylite/recon:latest
           cache-from: type=gha
 
   publish:
@@ -69,5 +76,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.version.outputs.version }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/ValoStoreAlert-android.apk \
-            --repo "$GITHUB_REPOSITORY" --title "Valo Store Alert $VERSION" --generate-notes
+          gh release create "v$VERSION" dist/Recon-android.apk --target "$GITHUB_SHA" \
+            --repo "$GITHUB_REPOSITORY" --title "Recon $VERSION" --generate-notes

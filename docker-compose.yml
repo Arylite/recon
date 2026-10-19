@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ghcr.io/arylite/valorant-store-alert:latest
+    image: ghcr.io/arylite/recon:latest
     build: ./backend
     restart: unless-stopped
     environment:

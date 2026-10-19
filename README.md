@@ -1,11 +1,11 @@
-<p align="center"><img src="docs/logo.svg" width="96" alt="Valo Store Alert logo"></p>
+<p align="center"><img src="docs/logo.svg" width="96" alt="Recon logo"></p>
 
-<h1 align="center">Valo Store Alert</h1>
+<h1 align="center">Recon</h1>
 
 <p align="center">
-  <a href="https://github.com/Arylite/valorant-store-alert/actions/workflows/ci.yml"><img src="https://github.com/Arylite/valorant-store-alert/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/Arylite/valorant-store-alert/releases/latest"><img src="https://img.shields.io/github/v/release/Arylite/valorant-store-alert" alt="Latest release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/Arylite/valorant-store-alert" alt="MIT license"></a>
+  <a href="https://github.com/Arylite/recon/actions/workflows/ci.yml"><img src="https://github.com/Arylite/recon/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/Arylite/recon/releases/latest"><img src="https://img.shields.io/github/v/release/Arylite/recon" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Arylite/recon" alt="MIT license"></a>
 </p>
 
 Watches the Valorant daily store of several Riot accounts and sends a notification to your phone as
@@ -20,52 +20,50 @@ soon as a skin from your wishlist shows up.
 
 ## How it works
 
-- **Backend** (`backend/`, TypeScript, Hono): logs in with each account's stored session, reads the
-  daily store every 15 minutes and records an alert for every wishlisted skin. It downloads the skin
-  catalog (names, art, tiers) from [valorant-api.com](https://valorant-api.com) when the image is
-  built and refreshes it daily.
-- **Android app** (`android/`, Kotlin + Compose): shows the stores with skin art and VP prices, manages
-  the wishlist and the accounts, and polls the backend every 15 minutes in the background to post
-  notifications. Accounts are added by signing in on Riot's own login page inside the app.
-- **Cloudflare tunnel** (`docker-compose.yml`): the phone reaches the backend over HTTPS, no port is
-  opened on your network.
+- **B## How it works
+
+- **Backend** (`backend/`, TypeScript, Hono, Docker): reads the daily store of every Riot account
+  every 15 minutes and records an alert for each wishlisted skin. The skin catalog comes from
+  [valorant-api.com](https://valorant-api.com) and is refreshed daily.
+- **Cloudflare tunnel** (`docker-compose.yml`): the phone reaches the backend at `recon.isx.re` over
+  HTTPS, no port is opened on your network.
+- **Android app** (`android/`, Kotlin + Compose): shows the stores, manages the wishlist and the Riot
+  accounts, and polls every 15 minutes in the background to post notifications.
+- **Users**: everyone signs up in the app and only sees their own Riot accounts and wishlist.
+  Signing in returns a ticket-granting ticket (90 days, stored hashed, revoked on sign out), traded
+  for a one-hour signed service ticket used on every call.
 
 ## Deploy the backend
 
-1. Cloudflare Zero Trust > Networks > Tunnels: create a tunnel, copy its token, and add a public
-   hostname pointing to `http://backend:8080`.
-2. `cp .env.example .env` and fill `API_TOKEN`, `SECRET` (`openssl rand -hex 32` for each) and `TUNNEL_TOKEN`.
-3. `docker compose up -d --build` (or `docker compose pull` to use the published image).
-
-The API is on the internet behind the token only: keep `API_TOKEN` long and random. Session cookies
-are stored encrypted with `SECRET` in the `data` volume; losing `SECRET` means signing the accounts
-in again.
+1. Cloudflare Zero Trust > Networks > Tunnels: create a tunnel, copy its token, and add the public
+   hostname `recon.isx.re` pointing to `http://backend:8080`.
+2. `cp .env.example .env` and fill `API_TOKEN`, `SECRET` (`openssl rand -hex 32` for each) and
+   `TUNNEL_TOKEN`. `API_TOKEN` is the app key baked into the APK (it only keeps scanners out, the
+   user tickets guard the data); `SECRET` encrypts Riot cookies and signs tickets, losing it means
+   signing everything in again. Put the same `API_TOKEN` in the GitHub secrets for the APK build.
+3. `docker compose up -d`. After a release: `docker compose pull && docker compose up -d`.
 
 ## Install the app
 
-Download `ValoStoreAlert-android.apk` from the [latest release](https://github.com/Arylite/valorant-store-alert/releases/latest),
-open **Setup**, enter the tunnel URL and your `API_TOKEN`, then **Add account with Riot**.
+Download `Recon-android.apk` from the [latest release](https://github.com/Arylite/recon/releases/latest),
+create an account, then **Add a Riot account**. The server address is built in.
 
-The app never sees your password: Riot's login page runs in a web view, and once Riot confirms the
-sign-in the app only reads the session cookies and wipes the web view. The backend logs in once to
-check the session, detects the region and takes the account name from the Riot ID. Tick "Stay signed
-in" on the Riot page. Google and Apple logins do not work inside apps: use your Riot ID.
+The app never sees your Riot password: Riot's login page runs in a web view, and once Riot confirms
+the sign-in the app only reads the session cookies and wipes the web view. Tick "Stay signed in".
+Google and Apple logins do not work inside apps: use your Riot ID.
 
 ## Develop
 
 ```
-cd backend && npm ci && npm test       # typecheck: npm run typecheck, run: npm run dev
-cd android && ./gradlew ktlintCheck lintRelease assembleRelease   # needs ANDROID_HOME
+cd backend && npm ci && npm test        # run: API_TOKEN=x SECRET=y npm run dev
+cd android && ./gradlew assembleDebug -PapiToken=x -PapiUrl=http://localhost:8080   # + adb reverse tcp:8080 tcp:8080
 ```
-
-Debug builds may talk to `http://localhost` (for `adb reverse`); release builds are HTTPS only.
 
 ## Releasing
 
-Push a tag `vX.Y.Z`. `release.yml` reuses `ci.yml`, then publishes the signed APK to a GitHub release
-and the backend image to `ghcr.io/arylite/valorant-store-alert`. Signing uses the repository secrets
-`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`;
-keep the keystore safe, users must uninstall the app to update if it changes.
+Every push to `main` runs CI, then publishes the image `ghcr.io/arylite/recon`
+(`latest` and `1.0.N`) and a GitHub release `v1.0.N` with the signed APK. Signing uses the secrets
+`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`.
 
 ## Limits
 
@@ -79,6 +77,6 @@ See [DESIGN.md](DESIGN.md) for the design brief and [SECURITY.md](SECURITY.md) t
 
 ## Disclaimer
 
-Valo Store Alert isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games
+Recon isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games
 or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all
 associated properties are trademarks or registered trademarks of Riot Games, Inc.

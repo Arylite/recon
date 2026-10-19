@@ -1,8 +1,6 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
   # The release workflow reuses these jobs to build what it publishes.
@@ -69,12 +67,12 @@ jobs:
         with:
           context: backend
           load: true
-          tags: valorant-store-alert:ci
+          tags: recon:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Start the image and wait for its health check
         run: |
-          docker run -d --name backend -p 8080:8080 -e API_TOKEN=ci -e SECRET=ci valorant-store-alert:ci
+          docker run -d --name backend -p 8080:8080 -e API_TOKEN=ci -e SECRET=ci recon:ci
           for i in $(seq 1 20); do
             curl -fsS localhost:8080/health && exit 0
             sleep 1
@@ -111,17 +109,19 @@ jobs:
       - name: Lint and build
         env:
           VERSION_NAME: ${{ env.VERSION }}
+          # The app key, not a secret worth much: it is readable in the APK.
+          ORG_GRADLE_PROJECT_apiToken: ${{ secrets.API_TOKEN }}
           VERSION_CODE: ${{ github.run_number }}
           VALOALERT_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           VALOALERT_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           VALOALERT_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew ktlintCheck lintRelease assembleRelease
       - name: Rename APK
-        run: mv app/build/outputs/apk/release/app-release.apk ../ValoStoreAlert-android.apk
+        run: mv app/build/outputs/apk/release/app-release.apk ../Recon-android.apk
       - uses: actions/upload-artifact@v7
         with:
           name: android
-          path: ValoStoreAlert-android.apk
+          path: Recon-android.apk
           retention-days: 7
       - name: Upload lint report
         if: failure()
