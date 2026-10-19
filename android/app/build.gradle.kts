@@ -14,6 +14,13 @@ android {
         targetSdk = 36
         versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
         versionName = System.getenv("VERSION_NAME") ?: "0.1.0"
+        // The app key is baked into the APK and only keeps scanners out; user tickets guard the data.
+        // Pass it with -PapiToken=... (CI: ORG_GRADLE_PROJECT_apiToken); apiUrl points a debug build
+        // at a local backend (http://localhost:8080 with adb reverse).
+        val apiUrl = providers.gradleProperty("apiUrl").getOrElse("https://recon.isx.re")
+        val apiToken = providers.gradleProperty("apiToken").getOrElse("")
+        buildConfigField("String", "API_URL", "\"$apiUrl\"")
+        buildConfigField("String", "API_TOKEN", "\"$apiToken\"")
     }
 
     // Release builds are signed with the keystore given in the environment (CI), else with the
@@ -41,6 +48,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {

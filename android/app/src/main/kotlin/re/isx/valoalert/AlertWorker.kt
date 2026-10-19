@@ -43,6 +43,9 @@ class AlertWorker(
             if (prefs.lastAlertId >= 0) alerts.forEach(::show)
             prefs.lastAlertId = maxOf(prefs.lastAlertId, alerts.maxOfOrNull { it.id } ?: 0)
             Result.success()
+        } catch (e: Unauthorized) {
+            // Signed out: nothing to poll until the user signs in again.
+            if (e.signedOut) Result.success() else Result.retry()
         } catch (e: Exception) {
             Result.retry()
         }
@@ -61,7 +64,7 @@ class AlertWorker(
         val notification =
             Notification
                 .Builder(context, CHANNEL)
-                .setSmallIcon(android.R.drawable.star_on)
+                .setSmallIcon(R.drawable.ic_notify)
                 .setContentTitle(alert.skin)
                 .setContentText("In the store of ${alert.account}")
                 .setContentIntent(open)

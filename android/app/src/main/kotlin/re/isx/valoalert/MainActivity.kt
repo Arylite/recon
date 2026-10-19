@@ -9,7 +9,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import re.isx.valoalert.ui.ValoTheme
+import re.isx.valoalert.ui.ReconTheme
 
 class MainActivity : ComponentActivity() {
     private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
@@ -24,6 +24,6 @@ class MainActivity : ComponentActivity() {
         }
         scheduleAlerts(this)
         val prefs = Prefs(this)
-        setContent { ValoTheme { App(prefs) } }
+        setContent { ReconTheme { App(prefs) } }
     }
 }

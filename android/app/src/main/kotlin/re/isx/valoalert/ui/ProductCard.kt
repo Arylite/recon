@@ -2,13 +2,16 @@ package re.isx.valoalert.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,35 +24,30 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import re.isx.valoalert.Offer
 import re.isx.valoalert.Tier
 
-private fun Modifier.glow(color: Color) =
-    drawBehind {
-        val brush =
-            Brush.radialGradient(
-                listOf(color.copy(alpha = 0.30f), Color.Transparent),
-                Offset(size.width / 2, size.height * 0.46f),
-                size.width * 0.6f,
-            )
-        drawRect(brush)
-    }
+/** A soft pool of colour behind the art; with the tier colour it tells the rarity at a glance. */
+fun Modifier.glow(
+    color: Color,
+    alpha: Float = 0.28f,
+    x: Float = 0.5f,
+    y: Float = 0.55f,
+) = drawBehind {
+    drawRect(
+        Brush.radialGradient(
+            listOf(color.copy(alpha = alpha), Color.Transparent),
+            Offset(size.width * x, size.height * y),
+            size.width * 0.6f,
+        ),
+    )
+}
 
 private fun accent(tier: Tier?) = tier?.let { Color(it.color) } ?: Palette.Mute
 
-@Composable
-private fun Price(
-    vp: Int,
-    color: Color,
-) = Box(Modifier.clip(Chamfer(6.dp)).background(color).padding(horizontal = 10.dp, vertical = 5.dp)) {
-    Text("%,d VP".format(vp), color = Palette.Ink, style = Type.Label.copy(fontSize = 15.sp, letterSpacing = 0.8.sp))
-}
-
-/** A store offer: the skin art over its own oversized name, lit by its tier colour, price in a pill. */
+/** A store offer: name and tier on top, the skin art in its tier glow, the price at the bottom. */
 @Composable
 fun ProductCard(
     offer: Offer,
@@ -57,41 +55,37 @@ fun ProductCard(
     hit: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val shape = Chamfer(18.dp)
+    val shape = RoundedCornerShape(28.dp)
     Box(
         modifier
             .fillMaxWidth()
-            .height(236.dp)
+            .height(272.dp)
             .clip(shape)
             .background(Palette.Panel)
-            .glow(accent(tier))
-            .border(if (hit) 2.dp else 1.dp, if (hit) Palette.Bone else Palette.Rule, shape),
+            .glow(if (hit) Palette.Ember else accent(tier))
+            .border(if (hit) 1.5.dp else 1.dp, if (hit) Palette.Ember else Palette.Rule, shape)
+            .padding(20.dp),
     ) {
-        Text(
-            offer.name.substringBefore(' ').uppercase(),
-            Modifier.padding(start = 10.dp, top = 30.dp),
-            color = Palette.Bone.copy(alpha = 0.07f),
-            style = Type.Giant,
-            maxLines = 1,
-            softWrap = false,
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(offer.name, Modifier.padding(end = 56.dp), color = Palette.Bone, style = Type.Name, maxLines = 2)
+            TierTag(tier)
+        }
         AsyncImage(
             offer.icon,
             null,
             Modifier
                 .align(Alignment.Center)
+                .padding(top = 36.dp)
                 .fillMaxWidth()
-                .height(132.dp)
-                .padding(horizontal = 18.dp),
+                .height(110.dp),
             contentScale = ContentScale.Fit,
         )
-        Row(Modifier.fillMaxWidth().padding(14.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-            TierTag(tier)
+        Row(Modifier.align(Alignment.BottomStart).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.Bottom) {
+            Column {
+                Label("Price")
+                Text(offer.cost?.let { "%,d VP".format(it) } ?: "-", color = Palette.Bone, style = Type.Price)
+            }
             if (hit) HitTag()
-        }
-        Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(14.dp), Arrangement.SpaceBetween, Alignment.Bottom) {
-            Text(offer.name.uppercase(), Modifier.weight(1f).padding(end = 10.dp), color = Palette.Bone, style = Type.Name, maxLines = 2)
-            offer.cost?.let { Price(it, accent(tier)) }
         }
     }
 }
@@ -107,15 +101,16 @@ fun MiniCard(
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = Chamfer(12.dp)
+    val shape = RoundedCornerShape(22.dp)
     Box(
         modifier
-            .height(168.dp)
+            .height(176.dp)
             .clip(shape)
             .background(Palette.Panel)
-            .glow(accent(tier))
+            .glow(accent(tier), y = 0.35f)
             .border(1.dp, Palette.Rule, shape)
-            .clickable(onClickLabel = actionLabel, role = Role.Button, onClick = onAction),
+            .pressable(onAction, label = actionLabel)
+            .padding(14.dp),
     ) {
         if (icon != null) {
             AsyncImage(
@@ -123,21 +118,21 @@ fun MiniCard(
                 null,
                 Modifier
                     .align(Alignment.TopCenter)
+                    .padding(top = 14.dp)
                     .fillMaxWidth()
-                    .height(84.dp)
-                    .padding(horizontal = 10.dp, vertical = 14.dp),
+                    .height(64.dp),
                 contentScale = ContentScale.Fit,
             )
         } else {
             // A loose word, not a skin of the catalog: it matches every skin whose name contains it.
-            Label("Any skin containing", Modifier.align(Alignment.TopStart).padding(12.dp))
+            Label("Any skin containing", Modifier.align(Alignment.TopStart))
         }
-        Box(Modifier.align(Alignment.TopEnd).padding(10.dp)) { TierDot(tier) }
-        Box(Modifier.align(Alignment.BottomStart).padding(12.dp)) {
-            Text(name.uppercase(), color = Palette.Bone, style = Type.Skin, maxLines = 2)
-        }
-        Box(Modifier.align(Alignment.BottomEnd).padding(8.dp)) {
-            Icon(painterResource(actionIcon), null, Modifier.padding(2.dp), tint = Palette.Bone)
+        Box(Modifier.align(Alignment.TopEnd)) { TierDot(tier) }
+        Row(Modifier.align(Alignment.BottomStart).fillMaxWidth(), Arrangement.spacedBy(8.dp), Alignment.Bottom) {
+            Text(name, Modifier.weight(1f), color = Palette.Bone, style = Type.Skin, maxLines = 2)
+            Box(Modifier.size(32.dp).clip(CircleShape).background(Palette.Raised), contentAlignment = Alignment.Center) {
+                Icon(painterResource(actionIcon), null, Modifier.size(16.dp), tint = Palette.Bone)
+            }
         }
     }
 }

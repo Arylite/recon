@@ -1,18 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Four daily offers, one lit: the wishlist hit. -->
+<!-- A ping going out: the dot is the skin you wait for, the open ring is the alert reaching you. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group
-        android:pivotX="54"
-        android:pivotY="54"
-        android:scaleX="0.92"
-        android:scaleY="0.92">
-    <path
-        android:fillColor="#E9E4DA"
-        android:fillType="evenOdd"
-        android:pathData="M29 29H45L51 35V51H35L29 45ZM32 32H43.76L48 36.24V48H36.24L32 43.76ZM57 29H73L79 35V51H63L57 45ZM29 57H45L51 63V79H35L29 73ZM32 60H43.76L48 64.24V76H36.24L32 71.76ZM57 57H73L79 63V79H63L57 73ZM60 60H71.76L76 64.24V76H64.24L60 71.76Z" />
-    </group>
+    <path android:fillColor="#E8492F" android:pathData="M54 46a8 8 0 1 0 0.01 0z" />
+    <path android:pathData="M54 37a17 17 0 1 0 0.01 0z" android:strokeColor="#F3F0EA" android:strokeWidth="5" />
+    <path android:pathData="M25 54A29 29 0 1 1 54 83" android:strokeColor="#F3F0EA" android:strokeWidth="5" android:strokeLineCap="round" />
 </vector>
