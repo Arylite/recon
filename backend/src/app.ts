@@ -58,7 +58,7 @@ export function createApp({ db, token, secret, catalog, verify, onChange }: Deps
   };
 
   return new Hono<{ Variables: { user: User } }>()
-    .onError((e, c) => c.json({ error: e.message }, e instanceof HTTPException ? e.status : 500))
+    .onError((e, c) => (console.error(`${c.req.method} ${c.req.path} failed:`, e), c.json({ error: e.message }, e instanceof HTTPException ? e.status : 500)))
     .notFound((c) => c.json({ error: 'not found' }, 404))
     .get('/health', (c) => c.json({ ok: true }))
     .use(async (c, next) => {

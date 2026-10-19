@@ -32,7 +32,11 @@ export const puuidFrom = (jwt: string): string =>
 export async function reauth(cookieStr: string): Promise<Creds> {
   const jar = cookies.parse(cookieStr);
   const r = await request(AUTH_URL, { headers: { Cookie: cookies.serialize(jar), 'User-Agent': UA } });
-  if (r.status !== 303 || !r.headers.location) throw new SessionExpired(`auth answered ${r.status}`);
+  if (r.status !== 303 || !r.headers.location) {
+    // A 403 with a Cloudflare page means Riot blocks this IP or TLS fingerprint, not a bad session.
+    console.error(`riot auth answered ${r.status}: ${r.text.replace(/\s+/g, ' ').slice(0, 300)}`);
+    throw new SessionExpired(`auth answered ${r.status}`);
+  }
   const { accessToken, idToken } = tokensFrom(r.headers.location);
   cookies.merge(jar, r.headers['set-cookie']);
 
@@ -41,7 +45,10 @@ export async function reauth(cookieStr: string): Promise<Creds> {
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', 'User-Agent': UA },
     body: '{}',
   });
-  if (e.status !== 200) throw new Error(`entitlements answered ${e.status}`);
+  if (e.status !== 200) {
+    console.error(`riot entitlements answered ${e.status}: ${e.text.slice(0, 300)}`);
+    throw new Error(`entitlements answered ${e.status}`);
+  }
   return {
     accessToken,
     idToken,

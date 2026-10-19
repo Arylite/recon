@@ -29,9 +29,11 @@ export async function checkAll(db: Db, secret: string, catalog: Catalog): Promis
           );
           const { fresh, notified } = findNew(offers.map((o) => o.name), user.wishlist, acc.notified, day);
           Object.assign(acc, { offers, notified, error: null });
+          console.log(`check ${user.name}/${acc.name}: ${offers.length} offers, ${fresh.length} new wishlist hits`);
           for (const skin of fresh) user.alerts.push({ id: ++user.lastAlertId, ts: Date.now(), account: acc.name, skin });
         } catch (e) {
           acc.error = e instanceof Error ? e.message : String(e);
+          console.error(`check ${user.name}/${acc.name} failed: ${acc.error}`);
         }
       }
       user.alerts = user.alerts.slice(-200);
