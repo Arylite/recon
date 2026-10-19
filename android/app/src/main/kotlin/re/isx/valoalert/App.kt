@@ -164,6 +164,14 @@ fun App(prefs: Prefs) {
     }
 
     LaunchedEffect(api) { refresh() }
+    // A new account is checked by the server just after it is added: ask again until its store is in.
+    val waiting = accounts.any { it.offers.isEmpty() && it.error == null }
+    LaunchedEffect(waiting) {
+        while (waiting) {
+            delay(3000)
+            refresh()
+        }
+    }
     // An error reads in a few seconds; then it gets out of the way by itself.
     LaunchedEffect(message) {
         delay(4500)
