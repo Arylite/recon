@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { findNew } from '../src/checker.js';
 import { encrypt, decrypt } from '../src/vault.js';
@@ -51,11 +50,13 @@ test('catalog compacts, filters defaults and falls back to the id', async () => 
   assert.deepEqual(c.skins.map((s) => s.n), ['Reaver Vandal']);
 
   let calls = 0;
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cat-'));
-  process.env.CATALOG_SEED = path.join(dir, 'no-seed.json'); // a real seed in the working directory would change the scenario
-  const cat = createCatalog(dir, async () => (calls++, c));
+  let saved: unknown;
+  const cat = createCatalog(undefined, (d) => (saved = d), async () => (calls++, c));
   assert.equal((await cat.lookup('a')).name, 'Reaver Vandal');
   assert.equal(calls, 1);
+  assert.equal(saved, c, 'a fetched catalog is persisted');
+  await cat.refreshIfStale();
+  assert.equal(calls, 1, 'a fresh catalog is not refetched by the scheduled check');
   assert.deepEqual(await cat.lookup('zzz'), { name: 'zzz', icon: null, tier: null });
   assert.equal(calls, 1, 'a fresh catalog is not refetched on every miss');
 });

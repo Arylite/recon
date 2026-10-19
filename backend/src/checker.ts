@@ -19,21 +19,23 @@ export async function checkAll(db: Db, secret: string, catalog: Catalog): Promis
   const { state } = db;
   const day = new Date().toISOString().slice(0, 10);
   try {
-    for (const acc of [...state.accounts]) {
-      try {
-        const creds = await reauth(decrypt(acc.cookies, secret));
-        acc.cookies = encrypt(creds.cookies, secret);
-        const offers = await Promise.all(
-          (await fetchOffers(creds, acc.shard)).map(async (o) => ({ ...(await catalog.lookup(o.uuid)), cost: o.cost })),
-        );
-        const { fresh, notified } = findNew(offers.map((o) => o.name), state.wishlist, acc.notified, day);
-        Object.assign(acc, { offers, notified, error: null });
-        for (const skin of fresh) state.alerts.push({ id: ++state.lastAlertId, ts: Date.now(), account: acc.name, skin });
-      } catch (e) {
-        acc.error = e instanceof Error ? e.message : String(e);
+    for (const user of state.users) {
+      for (const acc of [...user.accounts]) {
+        try {
+          const creds = await reauth(decrypt(acc.cookies, secret));
+          acc.cookies = encrypt(creds.cookies, secret);
+          const offers = await Promise.all(
+            (await fetchOffers(creds, acc.shard)).map(async (o) => ({ ...(await catalog.lookup(o.uuid)), cost: o.cost })),
+          );
+          const { fresh, notified } = findNew(offers.map((o) => o.name), user.wishlist, acc.notified, day);
+          Object.assign(acc, { offers, notified, error: null });
+          for (const skin of fresh) user.alerts.push({ id: ++user.lastAlertId, ts: Date.now(), account: acc.name, skin });
+        } catch (e) {
+          acc.error = e instanceof Error ? e.message : String(e);
+        }
       }
+      user.alerts = user.alerts.slice(-200);
     }
-    state.alerts = state.alerts.slice(-200);
     db.save();
   } finally {
     busy = false;

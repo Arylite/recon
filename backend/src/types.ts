@@ -30,11 +30,26 @@ export interface Alert {
   skin: string;
 }
 
-export interface State {
+export interface Tgt {
+  /** sha256 of the ticket-granting ticket; the ticket itself is only ever in the app. */
+  hash: string;
+  exp: number;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  /** pbkdf2 `salt:hash`. */
+  password: string;
+  tgts: Tgt[];
   accounts: Account[];
   wishlist: string[];
   alerts: Alert[];
   lastAlertId: number;
+}
+
+export interface State {
+  users: User[];
 }
 
 export interface Db {

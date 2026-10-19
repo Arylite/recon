@@ -1,5 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { request } from './http.js';
 import type { Offer } from './types.js';
 
@@ -31,7 +29,8 @@ export interface Catalog {
   readonly data: CatalogData;
   refresh: () => Promise<void>;
   lookup: (uuid: string) => Promise<Omit<Offer, 'cost'>>;
-  start: () => void;
+  /** Refreshes when the catalog is over a day old; called on every scheduled check. */
+  refreshIfStale: () => Promise<void>;
 }
 
 async function get<T>(p: string): Promise<T> {
@@ -58,15 +57,12 @@ export async function fetchCatalog(): Promise<CatalogData> {
   return compact(tiers, skins);
 }
 
-/** Written at image build time by scripts/build-catalog.ts, relative to the working directory. */
-export const seedPath = () => path.resolve(process.env.CATALOG_SEED ?? 'catalog.seed.json');
-
-const read = (file: string): CatalogData | null =>
-  fs.existsSync(file) ? (JSON.parse(fs.readFileSync(file, 'utf8')) as CatalogData) : null;
-
-export function createCatalog(dir: string, fetcher: () => Promise<CatalogData> = fetchCatalog): Catalog {
-  const file = path.join(dir, 'catalog.json');
-  let data: CatalogData = read(file) ?? read(seedPath()) ?? { updated: 0, tiers: [], skins: [] };
+export function createCatalog(
+  saved: CatalogData | undefined,
+  persist: (d: CatalogData) => void,
+  fetcher: () => Promise<CatalogData> = fetchCatalog,
+): Catalog {
+  let data: CatalogData = saved ?? { updated: 0, tiers: [], skins: [] };
   const build = (d: CatalogData) => new Map(d.skins.map((s) => [s.l, s]));
   let index = build(data);
   let pending: Promise<void> | undefined;
@@ -76,8 +72,7 @@ export function createCatalog(dir: string, fetcher: () => Promise<CatalogData> =
       .then((fresh) => {
         data = fresh;
         index = build(fresh);
-        fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(file, JSON.stringify(fresh));
+        persist(fresh);
       })
       .finally(() => {
         pending = undefined;
@@ -94,10 +89,6 @@ export function createCatalog(dir: string, fetcher: () => Promise<CatalogData> =
       const s = index.get(uuid);
       return s ? { name: s.n, icon: s.i, tier: s.t } : { name: uuid, icon: null, tier: null };
     },
-    start() {
-      const run = () => refresh().catch((e: Error) => console.error('catalog refresh failed:', e.message));
-      if (Date.now() - data.updated > DAY) run();
-      setInterval(run, DAY);
-    },
+    refreshIfStale: () => (Date.now() - data.updated > DAY ? refresh() : Promise.resolve()),
   };
 }
