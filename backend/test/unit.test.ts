@@ -44,10 +44,11 @@ test('regions: latam and br live on the na shard, unknown ones are not guessed',
 });
 
 test('catalog compacts, filters defaults and falls back to the id', async () => {
-  const skin = (n: string, l: string) => ({ displayName: n, displayIcon: `https://x/${l}.png`, contentTierUuid: 't1', levels: [{ uuid: l }] });
+  const skin = (n: string, l: string) => ({ displayName: n, displayIcon: 'https://x/cross.png', contentTierUuid: 't1', levels: [{ uuid: l, displayIcon: `https://x/${l}.png` }] });
   const c = compact([{ uuid: 't1', devName: 'Select', highlightColor: '5a9fe233' }], [skin('Reaver Vandal', 'a'), skin('Standard Vandal', 'b')]);
   assert.deepEqual(c.tiers, [{ id: 't1', name: 'Select', color: '#5a9fe2' }]);
   assert.deepEqual(c.skins.map((s) => s.n), ['Reaver Vandal']);
+  assert.equal(c.skins[0]!.i, 'https://x/a.png', 'the art comes from the first level, not the skin placeholder');
 
   let calls = 0;
   let saved: unknown;
@@ -57,6 +58,9 @@ test('catalog compacts, filters defaults and falls back to the id', async () => 
   assert.equal(saved, c, 'a fetched catalog is persisted');
   await cat.refreshIfStale();
   assert.equal(calls, 1, 'a fresh catalog is not refetched by the scheduled check');
+  let old = 0;
+  await createCatalog({ ...c, v: 1 }, () => {}, async () => (old++, c)).refreshIfStale();
+  assert.equal(old, 1, 'a catalog saved by an older version is refetched at once');
   assert.deepEqual(await cat.lookup('zzz'), { name: 'zzz', icon: null, tier: null });
   assert.equal(calls, 1, 'a fresh catalog is not refetched on every miss');
 });
