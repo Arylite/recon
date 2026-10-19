@@ -1,6 +1,7 @@
 package re.isx.valoalert.ui
 
 import android.annotation.SuppressLint
+import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -46,7 +47,10 @@ fun RiotLogin(
     DisposableEffect(Unit) { onDispose { web?.destroy() } }
 
     Column(Modifier.fillMaxSize().background(Palette.Ink)) {
-        Row(Modifier.fillMaxWidth().padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Label("Sign in with Riot", Modifier.weight(1f), color = Palette.Bone)
             IconBtn(R.drawable.ic_remove, "Cancel", onCancel)
         }
@@ -54,6 +58,9 @@ fun RiotLogin(
             factory = { ctx ->
                 WebView(ctx).also { view ->
                     web = view
+                    // AndroidView sizes the view WRAP_CONTENT; Chromium then has no fixed height, sets
+                    // 100vh to 0, and Riot's form draws empty and loses the caret on every key.
+                    view.layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                     view.settings.javaScriptEnabled = true
                     view.settings.domStorageEnabled = true
                     // The default agent says "wv", which makes some pages treat this as an embedded browser.
