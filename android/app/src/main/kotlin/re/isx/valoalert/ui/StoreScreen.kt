@@ -34,6 +34,7 @@ import kotlinx.coroutines.delay
 import re.isx.valoalert.Account
 import re.isx.valoalert.Catalog
 import re.isx.valoalert.R
+import re.isx.valoalert.Skin
 import re.isx.valoalert.friendly
 
 private const val DAY_MS = 24 * 3600 * 1000L
@@ -91,6 +92,7 @@ private fun AccountOffers(
     account: Account,
     wishlist: List<String>,
     catalog: Catalog?,
+    onOpen: (Skin) -> Unit,
 ) {
     when {
         account.error != null && account.offers.isEmpty() -> Text(friendly(account.error), color = Palette.Ember, style = Type.Body)
@@ -99,7 +101,13 @@ private fun AccountOffers(
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 if (account.error != null) Text(friendly(account.error), color = Palette.Ember, style = Type.Body)
                 account.offers.forEach { o ->
-                    ProductCard(o, catalog?.tier(o.tier), wishlist.any { it.lowercase() in o.name.lowercase() })
+                    val skin = catalog?.skin(o.name)
+                    ProductCard(
+                        o,
+                        catalog?.tier(o.tier),
+                        wishlist.any { it.lowercase() in o.name.lowercase() },
+                        onOpen = skin?.let { { onOpen(it) } },
+                    )
                 }
             }
     }
@@ -113,6 +121,7 @@ fun StoreScreen(
     loaded: Boolean,
     onRefresh: () -> Unit,
     onAddAccount: () -> Unit,
+    onOpen: (Skin) -> Unit,
 ) {
     var selected by remember { mutableIntStateOf(0) }
     val account = accounts.getOrNull(selected.coerceAtMost(accounts.lastIndex))
@@ -152,7 +161,7 @@ fun StoreScreen(
             when (key) {
                 null -> Loading("Getting your store.")
                 "" -> Empty(onAddAccount)
-                else -> accounts.firstOrNull { it.id == key }?.let { AccountOffers(it, wishlist, catalog) }
+                else -> accounts.firstOrNull { it.id == key }?.let { AccountOffers(it, wishlist, catalog, onOpen) }
             }
         }
     }

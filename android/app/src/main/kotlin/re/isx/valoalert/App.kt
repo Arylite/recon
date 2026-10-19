@@ -1,10 +1,14 @@
 package re.isx.valoalert
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -44,9 +48,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import re.isx.valoalert.ui.AccountsScreen
 import re.isx.valoalert.ui.Banner
+import re.isx.valoalert.ui.CatalogScreen
 import re.isx.valoalert.ui.Palette
 import re.isx.valoalert.ui.RiotLogin
 import re.isx.valoalert.ui.SignInScreen
+import re.isx.valoalert.ui.SkinScreen
 import re.isx.valoalert.ui.StoreScreen
 import re.isx.valoalert.ui.Type
 import re.isx.valoalert.ui.WishlistScreen
@@ -56,6 +62,7 @@ private enum class Tab(
     @DrawableRes val icon: Int,
 ) {
     Store("Store", R.drawable.ic_store),
+    Catalog("Catalog", R.drawable.ic_catalog),
     Wishlist("Wishlist", R.drawable.ic_wishlist),
     Accounts("Accounts", R.drawable.ic_accounts),
 }
@@ -110,6 +117,7 @@ fun App(prefs: Prefs) {
     var tab by remember { mutableStateOf(Tab.Store) }
     var login by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf("") }
+    var open by remember { mutableStateOf<Skin?>(null) }
 
     fun fail(e: Exception) {
         message = friendly(e)
@@ -163,6 +171,17 @@ fun App(prefs: Prefs) {
         }
     }
 
+    // Shown at once, then confirmed by the server.
+    fun addWish(name: String) {
+        if (wishlist.none { it.equals(name, true) }) wishlist = wishlist + name
+        act { it.addWish(name) }
+    }
+
+    fun removeWish(name: String) {
+        wishlist = wishlist - name
+        act { it.deleteWish(name) }
+    }
+
     LaunchedEffect(api) { refresh() }
     // A new account is checked by the server just after it is added: ask again until its store is in.
     val waiting = accounts.any { it.offers.isEmpty() && it.error == null }
@@ -206,20 +225,9 @@ fun App(prefs: Prefs) {
                     Column {
                         Crossfade(tab, Modifier.weight(1f), tween(180), label = "tab") { t ->
                             when (t) {
-                                Tab.Store -> StoreScreen(accounts, wishlist, catalog, loaded, ::refresh) { login = true }
-                                Tab.Wishlist ->
-                                    WishlistScreen(
-                                        wishlist,
-                                        catalog,
-                                        onAdd = { n ->
-                                            if (wishlist.none { it.equals(n, true) }) wishlist = wishlist + n
-                                            act { it.addWish(n) }
-                                        },
-                                        onRemove = { n ->
-                                            wishlist = wishlist - n
-                                            act { it.deleteWish(n) }
-                                        },
-                                    )
+                                Tab.Store -> StoreScreen(accounts, wishlist, catalog, loaded, ::refresh, { login = true }) { open = it }
+                                Tab.Catalog -> CatalogScreen(catalog, wishlist, ::addWish, ::removeWish) { open = it }
+                                Tab.Wishlist -> WishlistScreen(wishlist, catalog, ::addWish, ::removeWish)
                                 Tab.Accounts ->
                                     AccountsScreen(
                                         prefs.user,
@@ -231,12 +239,39 @@ fun App(prefs: Prefs) {
                                             act { it.deleteAccount(id) }
                                         },
                                         onSignOut = ::signOut,
+                                        onTestNotification = {
+                                            act("Sending a test notification") { a ->
+                                                val id = a.testAlert()
+                                                // Right after sign-in the first poll only records the position; start just before.
+                                                if (prefs.lastAlertId < 0) prefs.lastAlertId = id - 1
+                                                checkAlertsNow(context)
+                                            }
+                                        },
                                     )
                             }
                         }
                         // The keyboard already takes the bottom of the screen; the bar would ride on top of it.
                         if (WindowInsets.ime.getBottom(LocalDensity.current) == 0) NavBar(tab) { tab = it }
                     }
+            }
+        }
+        // A skin opened from the store or the catalog slides over everything but the banner.
+        AnimatedVisibility(open != null, enter = slideInVertically { it / 6 } + fadeIn(), exit = fadeOut()) {
+            val last = remember { arrayOfNulls<Skin>(1) }
+            open?.let { last[0] = it }
+            last[0]?.let { s ->
+                val watched = wishlist.firstOrNull { it.equals(s.name, true) }
+                Box(Modifier.fillMaxSize().safeDrawingPadding()) {
+                    SkinScreen(s, catalog?.tier(s.tier), watched != null, {
+                        if (watched !=
+                            null
+                        ) {
+                            removeWish(watched)
+                        } else {
+                            addWish(s.name)
+                        }
+                    }) { open = null }
+                }
             }
         }
         Banner(message.ifEmpty { busy }, message.isNotEmpty(), { message = "" }, Modifier.align(Alignment.TopCenter).safeDrawingPadding())

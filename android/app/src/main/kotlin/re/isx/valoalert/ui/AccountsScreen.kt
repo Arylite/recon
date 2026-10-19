@@ -99,6 +99,7 @@ fun AccountsScreen(
     onSignIn: () -> Unit,
     onDelete: (String) -> Unit,
     onSignOut: () -> Unit,
+    onTestNotification: () -> Unit,
 ) {
     Column(
         Modifier.verticalScroll(rememberScrollState()).padding(20.dp),
@@ -126,6 +127,8 @@ fun AccountsScreen(
             Step(R.drawable.ic_refresh, "Recon looks at your store every 15 minutes, even with the app closed.")
             Step(R.drawable.ic_wishlist, "A skin from your wishlist shows up: you get a notification.")
         }
+        // Goes through the server and the background check, like a real alert.
+        PillButton("Send a test notification", onTestNotification, Modifier.fillMaxWidth().padding(top = 8.dp))
         Text(
             "Sign out",
             Modifier

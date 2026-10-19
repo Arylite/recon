@@ -54,6 +54,7 @@ fun ProductCard(
     tier: Tier?,
     hit: Boolean,
     modifier: Modifier = Modifier,
+    onOpen: (() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(28.dp)
     Box(
@@ -64,6 +65,7 @@ fun ProductCard(
             .background(Palette.Panel)
             .glow(if (hit) Palette.Ember else accent(tier))
             .border(if (hit) 1.5.dp else 1.dp, if (hit) Palette.Ember else Palette.Rule, shape)
+            .then(if (onOpen != null) Modifier.pressable(onOpen, label = "Open ${offer.name}") else Modifier)
             .padding(20.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -100,6 +102,7 @@ fun MiniCard(
     actionLabel: String,
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpen: (() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(22.dp)
     Box(
@@ -109,7 +112,7 @@ fun MiniCard(
             .background(Palette.Panel)
             .glow(accent(tier), y = 0.35f)
             .border(1.dp, Palette.Rule, shape)
-            .pressable(onAction, label = actionLabel)
+            .pressable(onOpen ?: onAction, label = if (onOpen != null) "Open $name" else actionLabel)
             .padding(14.dp),
     ) {
         if (icon != null) {
@@ -130,7 +133,8 @@ fun MiniCard(
         Box(Modifier.align(Alignment.TopEnd)) { TierDot(tier) }
         Row(Modifier.align(Alignment.BottomStart).fillMaxWidth(), Arrangement.spacedBy(8.dp), Alignment.Bottom) {
             Text(name, Modifier.weight(1f), color = Palette.Bone, style = Type.Skin, maxLines = 2)
-            Box(Modifier.size(32.dp).clip(CircleShape).background(Palette.Raised), contentAlignment = Alignment.Center) {
+            val circle = Modifier.size(if (onOpen != null) 40.dp else 32.dp).clip(CircleShape).background(Palette.Raised)
+            Box(if (onOpen != null) circle.pressable(onAction, label = actionLabel) else circle, contentAlignment = Alignment.Center) {
                 Icon(painterResource(actionIcon), null, Modifier.size(16.dp), tint = Palette.Bone)
             }
         }

@@ -171,6 +171,9 @@ class Api(
         call("DELETE", "/wishlist/" + URLEncoder.encode(name, "UTF-8").replace("+", "%20"))
     }
 
+    /** Queues a fake alert on the server; returns its id. */
+    fun testAlert(): Long = JSONObject(call("POST", "/alerts/test")).getLong("id")
+
     fun alerts(since: Long): List<Alert> =
         JSONArray(call("GET", "/alerts?since=$since")).map {
             Alert(it.getLong("id"), it.getString("account"), it.getString("skin"))
