@@ -3,7 +3,7 @@ import type { Offer } from './types.js';
 
 const BASE = 'https://valorant-api.com/v1';
 // Bump when compact() changes, so servers refetch instead of waiting a day.
-const VERSION = 2;
+const VERSION = 4;
 const DAY = 24 * 3600 * 1000;
 const MISS_RETRY = 10 * 60 * 1000;
 
@@ -11,21 +11,35 @@ export interface CatalogData {
   /** Shape of the data; a saved catalog of an older version is fetched again. */
   v?: number;
   updated: number;
-  tiers: { id: string; name: string; color: string }[];
-  /** l: first level uuid (the id the store sends), n: name, i: icon url, t: tier uuid. */
-  skins: { l: string; n: string; i: string; t: string | null }[];
+  /** r: rank, 0 for Select up to 4 for Ultra. */
+  tiers: { id: string; name: string; color: string; r: number }[];
+  /** l: first level uuid (the id the store sends), n: name, i: icon url, t: tier uuid, w: weapon, s: skin line, u: skin uuid (for its variants). */
+  skins: { u: string; l: string; n: string; i: string; t: string | null; w: string; s: string | null }[];
 }
 
 interface ApiTier {
   uuid: string;
   devName: string;
   highlightColor: string;
+  rank: number;
+}
+
+interface ApiWeapon {
+  displayName: string;
+  skins: ApiSkin[];
+}
+
+interface ApiTheme {
+  uuid: string;
+  displayName: string;
 }
 
 interface ApiSkin {
+  uuid: string;
   displayName: string;
   displayIcon: string | null;
   contentTierUuid: string | null;
+  themeUuid: string | null;
   levels: { uuid: string; displayIcon: string | null }[];
 }
 
@@ -44,23 +58,24 @@ async function get<T>(p: string): Promise<T> {
 }
 
 /** Keeps only what the app and the checker use. */
-export function compact(tiers: ApiTier[], skins: ApiSkin[]): CatalogData {
+export function compact(tiers: ApiTier[], weapons: ApiWeapon[], themes: ApiTheme[]): CatalogData {
+  const line = new Map(themes.map((t) => [t.uuid, t.displayName]));
   return {
     v: VERSION,
     updated: Date.now(),
-    tiers: tiers.map((t) => ({ id: t.uuid, name: t.devName, color: `#${t.highlightColor.slice(0, 6)}` })),
-    skins: skins.flatMap((s) =>
+    tiers: tiers.map((t) => ({ id: t.uuid, name: t.devName, color: `#${t.highlightColor.slice(0, 6)}`, r: t.rank })),
+    skins: weapons.flatMap((w) => w.skins.map((s) => ({ s, w: w.displayName }))).flatMap(({ s, w }) =>
       // The skin's own icon is sometimes a placeholder cross; its first level always has the real art.
       s.levels[0]?.displayIcon && !/^(Standard |Random Favorite)/.test(s.displayName)
-        ? [{ l: s.levels[0].uuid, n: s.displayName, i: s.levels[0].displayIcon, t: s.contentTierUuid }]
+        ? [{ u: s.uuid, l: s.levels[0].uuid, n: s.displayName, i: s.levels[0].displayIcon, t: s.contentTierUuid, w, s: line.get(s.themeUuid ?? '') ?? null }]
         : [],
     ),
   };
 }
 
 export async function fetchCatalog(): Promise<CatalogData> {
-  const [tiers, skins] = await Promise.all([get<ApiTier[]>('/contenttiers'), get<ApiSkin[]>('/weapons/skins')]);
-  return compact(tiers, skins);
+  const [tiers, weapons, themes] = await Promise.all([get<ApiTier[]>('/contenttiers'), get<ApiWeapon[]>('/weapons'), get<ApiTheme[]>('/themes')]);
+  return compact(tiers, weapons, themes);
 }
 
 export function createCatalog(

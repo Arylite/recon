@@ -128,6 +128,15 @@ test('a bad session is refused when added, and adding the same account twice kee
   assert.equal(user().accounts.length, 1);
 });
 
+test('a test alert is queued for the caller only', async () => {
+  const { signUp } = setup();
+  const a = await signUp('alice');
+  const b = await signUp('bob');
+  const { id } = (await (await a.call('POST', '/alerts/test')).json()) as { id: number };
+  assert.equal(((await (await a.call('GET', `/alerts?since=${id - 1}`)).json()) as unknown[]).length, 1);
+  assert.deepEqual(await (await b.call('GET', '/alerts')).json(), []);
+});
+
 test('alerts are returned after the given id', async () => {
   const { call, user } = await setup().signUp();
   user().alerts.push({ id: 1, ts: 0, account: 'Main', skin: 'A' }, { id: 2, ts: 0, account: 'Main', skin: 'B' });

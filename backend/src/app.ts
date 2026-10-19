@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { zValidator } from '@hono/zod-validator';
-import { z, type ZodType } from 'zod';
+import { z } from 'zod';
+import { validate } from './validate.js';
 import { encrypt } from './vault.js';
 import { checkPassword, hashPassword, issueTicket, newTgt, readTicket, sha256 } from './auth.js';
 import type { Db, User } from './types.js';
@@ -30,15 +30,6 @@ const accountBody = z.object({ name: name.optional(), cookies: z.string().max(80
 const wishBody = z.object({ name });
 const alertsQuery = z.object({ since: z.coerce.number().int().min(0).default(0) });
 const MAX_TGTS = 10;
-
-// The Android client reads {"error": "..."} from every failure.
-const validate = <T extends ZodType>(target: 'json' | 'query', schema: T) =>
-  zValidator(target, schema, (result, c) => {
-    if (!result.success) {
-      const fields = [...new Set(result.error.issues.map((i) => i.path.join('.') || 'body'))].join(', ');
-      return c.json({ error: `invalid: ${fields}` }, 400);
-    }
-  });
 
 const bearer = (h: string | undefined) => h?.match(/^Bearer (.+)$/)?.[1] ?? '';
 
@@ -142,6 +133,13 @@ export function createApp({ db, token, secret, catalog, verify, onChange }: Deps
       return c.json({});
     })
     .get('/catalog', (c) => c.json(catalog.data))
+    // A fake alert for "Send a test notification"; the app picks it up like a real one.
+    .post('/alerts/test', (c) => {
+      const u = c.var.user;
+      u.alerts.push({ id: ++u.lastAlertId, ts: Date.now(), account: u.accounts[0]?.name ?? 'Recon', skin: 'Reaver Vandal (test)' });
+      db.save();
+      return c.json({ id: u.lastAlertId });
+    })
     .get('/alerts', validate('query', alertsQuery), (c) => {
       const { since } = c.req.valid('query');
       return c.json(c.var.user.alerts.filter((a) => a.id > since));

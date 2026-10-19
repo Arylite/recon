@@ -44,9 +44,22 @@ test('regions: latam and br live on the na shard, unknown ones are not guessed',
 });
 
 test('catalog compacts, filters defaults and falls back to the id', async () => {
-  const skin = (n: string, l: string) => ({ displayName: n, displayIcon: 'https://x/cross.png', contentTierUuid: 't1', levels: [{ uuid: l, displayIcon: `https://x/${l}.png` }] });
-  const c = compact([{ uuid: 't1', devName: 'Select', highlightColor: '5a9fe233' }], [skin('Reaver Vandal', 'a'), skin('Standard Vandal', 'b')]);
-  assert.deepEqual(c.tiers, [{ id: 't1', name: 'Select', color: '#5a9fe2' }]);
+  const skin = (n: string, l: string) => ({
+    uuid: `skin-${l}`,
+    displayName: n,
+    displayIcon: 'https://x/cross.png',
+    contentTierUuid: 't1',
+    themeUuid: 'th1',
+    levels: [{ uuid: l, displayIcon: `https://x/${l}.png` }],
+  });
+  const c = compact(
+    [{ uuid: 't1', devName: 'Select', highlightColor: '5a9fe233', rank: 0 }],
+    [{ displayName: 'Vandal', skins: [skin('Reaver Vandal', 'a'), skin('Standard Vandal', 'b')] }],
+    [{ uuid: 'th1', displayName: 'Reaver' }],
+  );
+  assert.deepEqual(c.tiers, [{ id: 't1', name: 'Select', color: '#5a9fe2', r: 0 }]);
+  assert.equal(c.skins[0]!.w, 'Vandal');
+  assert.equal(c.skins[0]!.s, 'Reaver');
   assert.deepEqual(c.skins.map((s) => s.n), ['Reaver Vandal']);
   assert.equal(c.skins[0]!.i, 'https://x/a.png', 'the art comes from the first level, not the skin placeholder');
 
