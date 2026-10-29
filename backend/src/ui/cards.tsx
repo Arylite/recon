@@ -1,10 +1,11 @@
 import type { Offer } from '../types';
 import { safeArt, type Tier } from './api';
-import { HitTag, Icon, Label, TierTag, useTint } from './bits';
+import { Icon, Label, TierTag, useTint } from './bits';
 
 /**
  * A store offer, flat and clean: the skin on its plate with its rarity, the name and price below with
- * the round arrow. A wishlist hit only changes colours, never a size, so nothing around it moves.
+ * the round arrow. A skin from the wishlist gets a star on its plate and an ember border: nothing
+ * changes size, so nothing around it moves.
  */
 export function ProductCard({ offer, tier, hit, onOpen }: { offer: Offer; tier: Tier | undefined; hit: boolean; onOpen?: () => void }) {
     const ref = useTint<HTMLElement>(tier);
@@ -14,6 +15,11 @@ export function ProductCard({ offer, tier, hit, onOpen }: { offer: Offer; tier: 
             {onOpen && <button className="tile-hit" aria-label={`Open ${offer.name}`} onClick={onOpen} />}
             <div className="plate">
                 <TierTag tier={tier} />
+                {hit && (
+                    <span className="wishbadge" role="img" aria-label="On your wishlist">
+                        <Icon name="wishlist" size={16} />
+                    </span>
+                )}
                 {art && <img src={art} alt="" referrerPolicy="no-referrer" />}
             </div>
             <div className="product-bottom">
@@ -24,14 +30,8 @@ export function ProductCard({ offer, tier, hit, onOpen }: { offer: Offer; tier: 
                         <small>VP</small>
                     </p>
                 </div>
-                <span className="product-end">
-                    {hit ? (
-                        <HitTag />
-                    ) : (
-                        <span className="go">
-                            <Icon name="arrow" size={18} />
-                        </span>
-                    )}
+                <span className="go">
+                    <Icon name="arrow" size={18} />
                 </span>
             </div>
         </article>

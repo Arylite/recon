@@ -117,14 +117,6 @@ export function TierTag({ tier }: { tier: Tier | undefined }) {
     ) : null;
 }
 
-/** Ember pill, the loudest thing on screen: used only for a wishlist hit. */
-export const HitTag = () => (
-    <span className="hittag">
-        <Icon name="wishlist" size={12} />
-        <span className="hit-long">ON YOUR&nbsp;</span>WISHLIST
-    </span>
-);
-
 /** A card-sized block that breathes while its content loads. */
 export const Skeleton = ({ height }: { height: number }) => {
     const ref = useCssVar<HTMLDivElement>('--h', `${height}px`);
