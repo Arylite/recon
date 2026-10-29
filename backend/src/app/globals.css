@@ -129,11 +129,15 @@ code {
 }
 
 /* Layout */
-.app,
-.auth {
-  max-width: 760px;
+.app {
+  width: 100%;
+  max-width: 880px;
   margin: 0 auto;
   padding: 20px 20px 120px;
+}
+.rail-brand,
+.rail-user {
+  display: none;
 }
 .screen {
   display: grid;
@@ -183,9 +187,38 @@ code {
   background: radial-gradient(circle 60vw at 10% 0, rgb(232 73 47 / 0.16), transparent);
 }
 .auth {
-  min-height: 100dvh;
+  display: grid;
+  gap: 28px;
   align-content: center;
-  padding-top: 40px;
+  max-width: 520px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+.auth-brand,
+.auth-form {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+.col {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  align-content: start;
+}
+.split,
+.skin-cols,
+.toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+.toolbar {
+  gap: 12px;
+}
+.sheet .col {
+  gap: 16px;
 }
 
 /* Parts.kt */
@@ -308,6 +341,12 @@ textarea:focus-visible {
   border-radius: 2px;
   background: var(--tint, var(--mute));
 }
+/* A narrow card only has room for the short tag. */
+@container (max-width: 290px) {
+  .hit-long {
+    display: none;
+  }
+}
 .hittag {
   display: inline-flex;
   align-items: center;
@@ -354,7 +393,7 @@ textarea:focus-visible {
 }
 .products {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
   gap: 14px;
 }
 .product {
@@ -684,6 +723,9 @@ textarea:focus-visible {
   background: var(--bone);
   color: var(--ink);
 }
+.navbar button:not([aria-current]) span {
+  display: none;
+}
 .banner {
   position: fixed;
   top: 12px;
@@ -722,7 +764,7 @@ textarea:focus-visible {
 .sheet-body {
   display: grid;
   gap: 16px;
-  max-width: 760px;
+  max-width: 640px;
   margin: 0 auto;
   padding: 20px 20px 48px;
 }
@@ -863,5 +905,181 @@ textarea:focus-visible {
   }
   .clock {
     font-size: 42px;
+  }
+}
+
+/* Wider screens: more room, so the layout opens up instead of stretching the phone one. */
+@media (min-width: 640px) {
+  .app {
+    padding: 32px 32px 120px;
+  }
+  .products {
+    gap: 16px;
+  }
+  .minis {
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  }
+  .screen > .segmented {
+    justify-self: start;
+    max-width: 100%;
+  }
+}
+@media (min-width: 960px) {
+  /* The floating pill becomes a side rail with every name. */
+  .shell {
+    display: grid;
+    grid-template-columns: 248px minmax(0, 1fr);
+    min-height: 100dvh;
+  }
+  .navbar {
+    position: sticky;
+    top: 0;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 6px;
+    height: 100dvh;
+    max-width: none;
+    margin: 0;
+    padding: 28px 16px;
+    border: 0;
+    border-right: 1px solid var(--rule);
+    border-radius: 0;
+    background: none;
+  }
+  .navbar button {
+    width: 100%;
+    height: 52px;
+  }
+  .navbar button:not([aria-current]) span {
+    display: inline;
+  }
+  .navbar button:not([aria-current]):hover {
+    background: var(--panel);
+  }
+  .rail-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 8px 28px;
+  }
+  .rail-user {
+    display: block;
+    margin-top: auto;
+    padding: 0 8px;
+    overflow-wrap: anywhere;
+  }
+  .app {
+    max-width: 1280px;
+    padding: 48px 56px 64px;
+  }
+  .screen {
+    gap: 28px;
+  }
+  .screen > header {
+    padding-top: 0;
+  }
+  .col > .spaced:first-child {
+    margin-top: 0;
+  }
+  .title {
+    font-size: 36px;
+    line-height: 40px;
+  }
+  .clock {
+    font-size: 56px;
+    line-height: 60px;
+  }
+  .product {
+    height: 320px;
+  }
+  .product-art {
+    inset: 84px 20px 84px;
+  }
+  .product-art img {
+    max-height: 150px;
+  }
+  /* The four daily skins fit one row from about 1350px wide. */
+  .products {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+  .minis {
+    grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+    gap: 14px;
+  }
+  .split {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    gap: 48px;
+    align-items: start;
+  }
+  /* Room enough to show every filter instead of scrolling them. */
+  .chips {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+  .toolbar {
+    grid-template-columns: minmax(280px, 1fr) minmax(320px, 440px);
+    align-items: center;
+    gap: 16px;
+  }
+  /* Sign in: the pitch on the left, the form on the right. */
+  .auth {
+    grid-template-columns: minmax(0, 1fr) 440px;
+    align-items: center;
+    max-width: 1100px;
+    gap: 96px;
+    padding: 48px;
+  }
+  .auth-brand {
+    gap: 24px;
+  }
+  .title-big {
+    font-size: 52px;
+    line-height: 56px;
+    letter-spacing: -1px;
+  }
+  .auth-form {
+    gap: 20px;
+    padding: 32px;
+    border: 1px solid var(--rule);
+    border-radius: 28px;
+    background: var(--panel);
+  }
+  .auth-form .segmented {
+    background: var(--ink);
+  }
+  .auth-form .field {
+    background: var(--ink);
+  }
+  /* A skin or the Riot sign-in opens as a panel over a dimmed app, not a full screen. */
+  .sheet {
+    display: grid;
+    place-items: center;
+    padding: 32px;
+    background: rgb(8 8 8 / 0.72);
+    backdrop-filter: blur(8px);
+  }
+  .sheet-body {
+    width: 100%;
+    max-height: calc(100dvh - 64px);
+    margin: 0;
+    padding: 28px 32px 36px;
+    overflow-y: auto;
+    border: 1px solid var(--rule);
+    border-radius: 32px;
+    background: var(--ink);
+  }
+  .sheet-body-wide {
+    max-width: 980px;
+  }
+  .skin-cols {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 32px;
+    align-items: start;
+  }
+  .hero {
+    height: 300px;
   }
 }

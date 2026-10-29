@@ -106,7 +106,7 @@ export function TierTag({ tier }: { tier: Tier | undefined }) {
 export const HitTag = () => (
   <span className="hittag">
     <Icon name="wishlist" size={12} />
-    ON YOUR WISHLIST
+    <span className="hit-long">ON YOUR&nbsp;</span>WISHLIST
   </span>
 );
 
