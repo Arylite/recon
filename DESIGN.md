@@ -14,3 +14,11 @@ bar, a segmented switch, small uppercase captions, a warm red glow in a corner, 
 - Copy: no server, region or HTTP wording in the app; errors go through `friendly()` in `Api.kt`.
 - Empty states show what will be there (four dashed daily slots, quick-add lines), never a blank.
 - Logo: a ping, an ember dot with a ring and an open ring; `docs/logo.svg`.
+
+## Website
+
+Same brief, in `backend/src/app/globals.css` (tokens at the top, same names and values as `ui/Theme.kt`).
+Outfit is served from the app itself (`src/app/fonts`); nothing is loaded from a third party except the
+skin art. Sign-in card with the segmented switch; three tabs (Store, Wishlist, Setup) in the floating pill
+bar; the clock counts down to the 00:00 UTC rotation. Skin glow is set through the CSSOM, because the
+Content-Security-Policy forbids style attributes.

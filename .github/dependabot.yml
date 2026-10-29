@@ -18,7 +18,3 @@ updates:
     groups:
       gradle:
         patterns: ["*"]
-  - package-ecosystem: docker
-    directory: /backend
-    schedule:
-      interval: weekly

@@ -1,6 +1,7 @@
 name: Release
 
-# Every push to main that passes CI publishes the image and a signed APK as a new release.
+# Every push to main that passes CI publishes a signed APK as a new release. The backend and the
+# website deploy on their own: Vercel builds every push to main.
 on:
   push:
     branches: [main]
@@ -32,32 +33,6 @@ jobs:
     with:
       version: ${{ needs.version.outputs.version }}
     secrets: inherit
-
-  image:
-    name: Publish image
-    needs: [version, build]
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-      - uses: docker/build-push-action@v7
-        with:
-          context: backend
-          push: true
-          # GHCR requires a lowercase repository name.
-          tags: |
-            ghcr.io/arylite/recon:${{ needs.version.outputs.version }}
-            ghcr.io/arylite/recon:latest
-          cache-from: type=gha
 
   publish:
     name: Publish release
