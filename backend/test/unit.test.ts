@@ -9,6 +9,7 @@ import { tokensFrom, puuidFrom, SessionExpired } from '../src/riot';
 import { shardFromAffinity } from '../src/profile';
 import { compact, createCatalog } from '../src/catalog';
 import { memoryKv } from '../src/kv';
+import { compactSkin, skinDetail } from '../src/skin';
 
 test('findNew matches case-insensitively and alerts once per day', () => {
   const names = ['Reaver Vandal', 'Prime Phantom'];
@@ -81,6 +82,30 @@ test('catalog compacts, filters defaults and falls back to the id', async () => 
   assert.equal(old, 1, 'a catalog saved by an older version is refetched at once');
   assert.deepEqual(await cat.lookup('zzz'), { name: 'zzz', icon: null, tier: null });
   assert.equal(calls, 1, 'a fresh catalog is not refetched on every miss');
+});
+
+test('skin details keep variants and levels, drop foreign hosts, and are cached', async () => {
+  const media = 'https://media.valorant-api.com/';
+  const raw = {
+    chromas: [
+      { displayName: 'Reaver Vandal', fullRender: `${media}a.png`, swatch: null },
+      { displayName: 'Reaver Vandal Level 4\r\n(Variant 2 Black)', fullRender: 'https://evil.example/x.png', swatch: `${media}s.png` },
+    ],
+    levels: [
+      { levelItem: null, streamedVideo: null },
+      { levelItem: 'EEquippableSkinLevelItem::SoundEffects', streamedVideo: `${media}v.mp4` },
+    ],
+  };
+  const d = compactSkin(raw);
+  assert.deepEqual(d.variants.map((v) => v.name), ['Base', 'Black']);
+  assert.equal(d.variants[1]!.render, null, 'art from another host is dropped');
+  assert.equal(d.variants[1]!.swatch, `${media}s.png`);
+  assert.deepEqual(d.levels.map((l) => l.name), ['Base', 'Sound Effects']);
+  const kv = memoryKv();
+  let calls = 0;
+  await skinDetail(kv, 'u1', async () => (calls++, raw));
+  await skinDetail(kv, 'u1', async () => (calls++, raw));
+  assert.equal(calls, 1, 'the second call comes from Redis');
 });
 
 test('source files stay small and ASCII', () => {

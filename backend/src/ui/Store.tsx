@@ -1,14 +1,14 @@
 'use client';
 import { useEffect, useState } from 'react';
-import type { Offer } from '../types';
-import type { Loaded } from './App';
-import { safeArt, safeColor, type AccountView, type Catalog } from './api';
-import { Message, Pill, useCssVar } from './bits';
+import { friendly, type AccountView, type Skin } from './api';
+import { IconBtn, Label, Logo, PillButton, Segmented, Skeleton } from './bits';
+import { ProductCard } from './cards';
+import { isWished, type Index } from './data';
 
-export const isWished = (name: string, wishlist: string[]) => wishlist.some((w) => name.toLowerCase().includes(w.toLowerCase()));
+const DAY_MS = 24 * 3600 * 1000;
 
-/** Time left before the store rotates, at 00:00 UTC. */
-function useCountdown() {
+/** Time left until the store rotates, every day at 00:00 UTC. */
+function useResetIn() {
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
     setNow(Date.now());
@@ -16,84 +16,77 @@ function useCountdown() {
     return () => clearInterval(t);
   }, []);
   if (now === null) return '--:--:--';
-  const next = Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), new Date(now).getUTCDate() + 1);
-  const s = Math.floor((next - now) / 1000);
-  return [Math.floor(s / 3600), Math.floor((s % 3600) / 60), s % 60].map((n) => String(n).padStart(2, '0')).join(':');
+  const s = Math.floor((DAY_MS - (now % DAY_MS)) / 1000);
+  return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map((n) => String(n).padStart(2, '0')).join(':');
 }
 
-function SkinCard({ offer, wished, tier }: { offer: Offer; wished: boolean; tier: { name: string; color: string } | undefined }) {
-  const ref = useCssVar<HTMLLIElement>('--tier', safeColor(tier?.color));
-  const art = safeArt(offer.icon);
-  return (
-    <li ref={ref} className={`skin${wished ? ' skin-wished' : ''}`}>
-      <div className="skin-art">{art && <img src={art} alt="" loading="lazy" referrerPolicy="no-referrer" />}</div>
-      <h3>{offer.name}</h3>
-      <p className="skin-meta">
-        <span>{tier ? tier.name.replace(/Edition$/, '') : 'Skin'}</span>
-        {offer.cost !== null && <span className="vp">{offer.cost} VP</span>}
-      </p>
-      {wished && <span className="flag">On your wishlist</span>}
-    </li>
-  );
-}
-
-function Slots() {
-  return (
-    <ul className="skins" aria-hidden="true">
+/** Four cards breathing in place of the offers, with a line saying what is going on. */
+const Loading = ({ text }: { text: string }) => (
+  <div className="stack">
+    <p className="body mute">{text}</p>
+    <div className="products">
       {[0, 1, 2, 3].map((i) => (
-        <li key={i} className="skin skin-empty" />
+        <Skeleton key={i} height={272} />
       ))}
-    </ul>
+    </div>
+  </div>
+);
+
+/** No Riot account yet: the four daily slots drawn empty, the first one pinging. */
+const Empty = ({ onAdd }: { onAdd: () => void }) => (
+  <div className="stack">
+    <div className="slots">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="slot dashed">
+          {i === 0 && <Logo size={72} />}
+        </div>
+      ))}
+    </div>
+    <h2 className="name">Your four daily skins land here</h2>
+    <p className="body mute">Add your Riot account and Recon checks your store every 15 minutes, even with the tab closed.</p>
+    <PillButton onClick={onAdd}>Add a Riot account</PillButton>
+  </div>
+);
+
+function Offers({ account, wishlist, index, onOpen }: { account: AccountView; wishlist: string[]; index: Index | null; onOpen: (s: Skin) => void }) {
+  if (account.error && account.offers.length === 0) return <p className="body ember">{friendly(0, account.error)}</p>;
+  if (account.offers.length === 0) return <Loading text="Looking at this store for the first time." />;
+  return (
+    <div className="stack">
+      {account.error && <p className="body ember">{friendly(0, account.error)}</p>}
+      <div className="products">
+        {account.offers.map((o) => {
+          const skin = index?.skin(o.name);
+          return <ProductCard key={o.name} offer={o} tier={index?.tier(o.tier)} hit={isWished(o.name, wishlist)} onOpen={skin && (() => onOpen(skin))} />;
+        })}
+      </div>
+    </div>
   );
 }
 
-function Account({ account, wishlist, catalog }: { account: AccountView; wishlist: string[]; catalog: Catalog | null }) {
-  const tiers = new Map((catalog?.tiers ?? []).map((t) => [t.id, t]));
-  return (
-    <section className="account" aria-label={account.name}>
-      <header>
-        <h2>{account.name}</h2>
-        <span className="caption">{account.shard.toUpperCase()}</span>
-      </header>
-      {account.error && <Message>{account.error.includes('expired') || account.error.includes('auth answered') ? 'Riot signed this account out. Add it again from Setup.' : 'The last check failed. It will be tried again soon.'}</Message>}
-      {account.offers.length === 0 ? (
-        <>
-          <Slots />
-          {!account.error && <p className="fine">The first check is running, the four skins show up in a moment.</p>}
-        </>
-      ) : (
-        <ul className="skins">
-          {account.offers.map((o) => (
-            <SkinCard key={o.name} offer={o} wished={isWished(o.name, wishlist)} tier={o.tier ? tiers.get(o.tier) : undefined} />
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
+export function Store(props: { accounts: AccountView[]; wishlist: string[]; index: Index | null; loaded: boolean; onRefresh: () => void; onAdd: () => void; onOpen: (s: Skin) => void }) {
+  const { accounts, wishlist, index, loaded, onRefresh, onAdd, onOpen } = props;
+  const [selected, setSelected] = useState(0);
+  const left = useResetIn();
+  const account = accounts[Math.min(selected, accounts.length - 1)];
+  const hits = account ? account.offers.filter((o) => isWished(o.name, wishlist)).length : 0;
+  const key = !loaded ? 'loading' : (account?.id ?? 'empty');
 
-export function Store({ accounts, wishlist, catalog, onSetup }: { accounts: Loaded<AccountView[]>; wishlist: string[]; catalog: Catalog | null; onSetup: () => void }) {
-  const left = useCountdown();
-  const list = accounts.data;
   return (
-    <>
-      <header className="screen-head">
-        <span className="caption">Store changes in</span>
-        <p className="clock" aria-label="Time before the store changes">
-          {left}
-        </p>
+    <div className="screen">
+      <header className="store-head">
+        <div>
+          <Label>Store resets in</Label>
+          <p className="clock">{left}</p>
+          {hits > 0 && <p className="skin-line ember">{hits === 1 ? '1 skin from your wishlist today' : `${hits} skins from your wishlist today`}</p>}
+        </div>
+        <IconBtn icon="refresh" label="Refresh" onClick={onRefresh} />
       </header>
-      {accounts.error && <Message>{accounts.error}</Message>}
-      {list === null && !accounts.error && <Slots />}
-      {list?.length === 0 && (
-        <section className="empty">
-          <Slots />
-          <h2>No Riot account yet</h2>
-          <p>Add one and its four daily skins show up here, with an alert when one is on your wishlist.</p>
-          <Pill onClick={onSetup}>Add a Riot account</Pill>
-        </section>
-      )}
-      {list?.map((a) => <Account key={a.id} account={a} wishlist={wishlist} catalog={catalog} />)}
-    </>
+      {accounts.length > 1 && <Segmented label="Riot account" items={accounts.map((a) => a.name.split('#')[0] ?? a.name)} selected={Math.min(selected, accounts.length - 1)} onSelect={setSelected} />}
+      {/* Fades between loading, empty and each account's offers instead of jumping. */}
+      <div key={key} className="fade">
+        {!loaded ? <Loading text="Getting your store." /> : account ? <Offers account={account} wishlist={wishlist} index={index} onOpen={onOpen} /> : <Empty onAdd={onAdd} />}
+      </div>
+    </div>
   );
 }

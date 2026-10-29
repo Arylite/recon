@@ -11,6 +11,7 @@ import { POST as authTicket } from '../src/app/auth/ticket/route';
 import { GET as catalogGet } from '../src/app/catalog/route';
 import { GET as cronCheck } from '../src/app/cron/check/route';
 import { GET as health } from '../src/app/health/route';
+import { GET as skinGet } from '../src/app/skins/[uuid]/route';
 import { GET as me } from '../src/app/me/route';
 import { POST as webLogin } from '../src/app/web/login/route';
 import { POST as webLogout } from '../src/app/web/logout/route';
@@ -278,4 +279,11 @@ test('an unexpected failure answers a generic error, never the internals', async
   assert.deepEqual(await r.json(), { error: 'server error' });
   assert.equal(r.headers.get('cache-control'), 'no-store');
   void call;
+});
+
+test('skin details only answer for a real skin id and a signed-in user', async () => {
+  const { call, signUp } = setup();
+  assert.equal((await call(skinGet, 'GET', '/skins/x', { params: { uuid: 'x' } })).status, 401);
+  const { as } = await signUp();
+  assert.equal((await as(skinGet, 'GET', '/skins/../etc', undefined, { uuid: '../etc' })).status, 400, 'no path tricks reach the data host');
 });

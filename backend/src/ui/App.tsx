@@ -1,85 +1,144 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
-import { api, whenSignedOut, type AccountView, type Alert, type Catalog } from './api';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Accounts } from './Accounts';
+import { AddAccount } from './AddAccount';
+import { api, friendly, whenSignedOut, type AccountView, type Alert, type Catalog as CatalogData, type Skin } from './api';
 import { Auth } from './Auth';
-import { Icon } from './bits';
+import { Banner, Icon, type IconName } from './bits';
+import { Catalog } from './Catalog';
+import { makeIndex, sameName } from './data';
 import { useNotifier } from './notify';
-import { Setup } from './Setup';
+import { SkinSheet } from './Skin';
 import { Store } from './Store';
 import { Wishlist } from './Wishlist';
 
-const TABS = [
+const TABS: { id: string; label: string; icon: IconName }[] = [
   { id: 'store', label: 'Store', icon: 'store' },
-  { id: 'wishlist', label: 'Wishlist', icon: 'heart' },
-  { id: 'setup', label: 'Setup', icon: 'tune' },
-] as const;
-type Tab = (typeof TABS)[number]['id'];
+  { id: 'catalog', label: 'Catalog', icon: 'catalog' },
+  { id: 'wishlist', label: 'Wishlist', icon: 'wishlist' },
+  { id: 'accounts', label: 'Accounts', icon: 'accounts' },
+];
 
-export interface Loaded<T> {
-  data: T | null;
-  error: string;
-  reload: () => Promise<void>;
-}
+/** Floating pill: the current tab is a filled bone pill with its name, the others icons only. */
+const NavBar = ({ current, onSelect }: { current: string; onSelect: (id: string) => void }) => (
+  <nav className="navbar" aria-label="Sections">
+    {TABS.map((t) => (
+      <button key={t.id} aria-current={t.id === current ? 'page' : undefined} aria-label={t.label} onClick={() => onSelect(t.id)}>
+        <Icon name={t.icon} />
+        {t.id === current && <span>{t.label}</span>}
+      </button>
+    ))}
+  </nav>
+);
 
-/** Loads a path now and every `every` ms while the page is visible. */
-function useLoad<T>(path: string, every = 0): Loaded<T> {
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState('');
-  const reload = useCallback(
-    () =>
-      api<T>(path).then(
-        (d) => (setData(d), setError('')),
-        (e: Error) => setError(e.message),
-      ),
-    [path],
-  );
+function Shell({ user, onSignedOut }: { user: string; onSignedOut: () => void }) {
+  const [tab, setTab] = useState('store');
+  const [accounts, setAccounts] = useState<AccountView[]>([]);
+  const [wishlist, setWishlist] = useState<string[]>([]);
+  const [alerts, setAlerts] = useState<Alert[] | null>(null);
+  const [catalog, setCatalog] = useState<CatalogData | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState('');
+  const [open, setOpen] = useState<Skin | null>(null);
+  const [adding, setAdding] = useState(false);
+  const index = useMemo(() => (catalog ? makeIndex(catalog) : null), [catalog]);
+  const notifier = useNotifier(alerts);
+  const fail = useCallback((e: unknown) => setMessage(e instanceof Error ? e.message : friendly(0, '')), []);
+
+  const refresh = useCallback(async () => {
+    try {
+      const [a, w, al] = await Promise.all([api<AccountView[]>('/accounts'), api<string[]>('/wishlist'), api<Alert[]>('/alerts')]);
+      setAccounts(a);
+      setWishlist(w);
+      setAlerts(al);
+      setLoaded(true);
+    } catch (e) {
+      fail(e);
+    }
+  }, [fail]);
+
+  // Runs one backend call, then reloads the lists; `wait` is shown meanwhile.
+  const act = async (wait: string, call: () => Promise<unknown>) => {
+    setBusy(wait);
+    await call().catch(fail);
+    setBusy('');
+    void refresh();
+  };
+  // Shown at once, then confirmed by the server.
+  const addWish = (name: string) => {
+    setWishlist((w) => (w.some((x) => sameName(x, name)) ? w : [...w, name]));
+    void act('', () => api('/wishlist', 'POST', { name }));
+  };
+  const removeWish = (name: string) => {
+    setWishlist((w) => w.filter((x) => x !== name));
+    void act('', () => api(`/wishlist/${encodeURIComponent(name)}`, 'DELETE'));
+  };
+  const removeAccount = (a: AccountView) => {
+    if (!window.confirm(`Remove ${a.name}? Its stored Riot session is deleted.`)) return;
+    setAccounts((all) => all.filter((x) => x.id !== a.id));
+    void act('', () => api(`/accounts/${a.id}`, 'DELETE'));
+  };
+  const signOut = async () => {
+    await api('/web/logout', 'POST').catch(() => {});
+    onSignedOut();
+  };
+
   useEffect(() => {
-    void reload();
-    if (!every) return;
-    const t = setInterval(() => document.visibilityState === 'visible' && void reload(), every);
+    void refresh();
+    api<CatalogData>('/catalog').then(setCatalog, fail);
+    const t = setInterval(() => document.visibilityState === 'visible' && void refresh(), 30_000);
     return () => clearInterval(t);
-  }, [reload, every]);
-  return { data, error, reload };
-}
+  }, [refresh, fail]);
+  // A new account is checked by the server just after it is added: ask again until its store is in.
+  const waiting = accounts.some((a) => a.offers.length === 0 && a.error === null);
+  useEffect(() => {
+    if (!waiting) return;
+    const t = setInterval(() => void refresh(), 3000);
+    return () => clearInterval(t);
+  }, [waiting, refresh]);
 
-function Shell({ name, onSignedOut }: { name: string; onSignedOut: () => void }) {
-  const [tab, setTab] = useState<Tab>('store');
-  const accounts = useLoad<AccountView[]>('/accounts', 30_000);
-  const wishlist = useLoad<string[]>('/wishlist');
-  const catalog = useLoad<Catalog>('/catalog');
-  const alerts = useLoad<Alert[]>('/alerts', 60_000);
-  const notifier = useNotifier(alerts.data);
-
+  const watched = open ? wishlist.find((w) => sameName(w, open.n)) : undefined;
   return (
-    <div className="shell">
-      <main id="main">
-        {tab === 'store' && <Store accounts={accounts} wishlist={wishlist.data ?? []} catalog={catalog.data} onSetup={() => setTab('setup')} />}
-        {tab === 'wishlist' && <Wishlist wishlist={wishlist} catalog={catalog} accounts={accounts.data ?? []} />}
-        {tab === 'setup' && <Setup name={name} accounts={accounts} alerts={alerts} notifier={notifier} onSignedOut={onSignedOut} />}
-      </main>
-      <nav className="tabbar" aria-label="Sections">
-        {TABS.map((t) => (
-          <button key={t.id} aria-current={tab === t.id ? 'page' : undefined} onClick={() => setTab(t.id)}>
-            <Icon name={t.icon} />
-            <span>{t.label}</span>
-          </button>
-        ))}
-      </nav>
-    </div>
+    <>
+      {tab === 'store' && <div className="glow" aria-hidden="true" />}
+      <div className="app">
+        <div key={tab} className="fade">
+          {tab === 'store' && <Store accounts={accounts} wishlist={wishlist} index={index} loaded={loaded} onRefresh={() => void refresh()} onAdd={() => setAdding(true)} onOpen={setOpen} />}
+          {tab === 'catalog' && <Catalog index={index} wishlist={wishlist} onAdd={addWish} onRemove={removeWish} onOpen={setOpen} />}
+          {tab === 'wishlist' && <Wishlist wishlist={wishlist} index={index} onAdd={addWish} onRemove={removeWish} />}
+          {tab === 'accounts' && (
+            <Accounts user={user} accounts={accounts} loaded={loaded} notifier={notifier} onAdd={() => setAdding(true)} onDelete={removeAccount} onSignOut={() => void signOut()} onTest={() => void act('Sending a test notification', () => api('/alerts/test', 'POST'))} />
+          )}
+        </div>
+      </div>
+      <NavBar current={tab} onSelect={setTab} />
+      {open && <SkinSheet skin={open} tier={index?.tier(open.t)} watched={!!watched} onToggle={() => (watched ? removeWish(watched) : addWish(open.n))} onClose={() => setOpen(null)} />}
+      {adding && (
+        <AddAccount
+          onClose={() => setAdding(false)}
+          onSubmit={(cookies) => {
+            setAdding(false);
+            void act('Adding your Riot account', () => api('/accounts', 'POST', { cookies }));
+          }}
+        />
+      )}
+      <Banner text={message || busy} error={message !== ''} onDismiss={() => setMessage('')} />
+    </>
   );
 }
 
 export function App() {
   // undefined while the session is being checked, null when signed out.
-  const [name, setName] = useState<string | null | undefined>(undefined);
+  const [user, setUser] = useState<string | null | undefined>(undefined);
   useEffect(() => {
-    whenSignedOut(() => setName(null));
+    whenSignedOut(() => setUser(null));
     api<{ name: string }>('/me').then(
-      (r) => setName(r.name),
-      () => setName(null),
+      (r) => setUser(r.name),
+      () => setUser(null),
     );
   }, []);
 
-  if (name === undefined) return <div className="boot" role="status" aria-label="Loading" />;
-  return name === null ? <Auth onSignedIn={setName} /> : <Shell name={name} onSignedOut={() => setName(null)} />;
+  if (user === undefined) return <div className="boot" role="status" aria-label="Loading" />;
+  return user === null ? <Auth onSignedIn={setUser} /> : <Shell user={user} onSignedOut={() => setUser(null)} />;
 }

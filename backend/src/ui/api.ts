@@ -26,6 +26,10 @@ export interface Catalog {
   tiers: Tier[];
   skins: Skin[];
 }
+export interface SkinDetail {
+  variants: { name: string; render: string | null; swatch: string | null }[];
+  levels: { name: string; video: string | null }[];
+}
 export type { Alert };
 
 /** Fails with a sentence that can be shown as it is. */
@@ -38,18 +42,20 @@ export class Failure extends Error {
   }
 }
 
-// Same idea as friendly() in the Android app: the server speaks in codes, people read sentences.
-function friendly(status: number, error: string | undefined): string {
+// The same sentences as friendly() in the Android app: the server speaks in codes, people read words.
+export function friendly(status: number, error: string | undefined | null): string {
   const e = (error ?? '').toLowerCase();
   if (status === 429) return 'Too many attempts. Wait a few minutes and try again.';
-  if (e.includes('wrong name')) return 'Wrong name or password.';
-  if (e.includes('taken')) return 'This name is already taken.';
-  if (e.includes('closed')) return 'Sign-ups are closed.';
-  if (e.includes('invalid: cookies')) return 'These cookies do not look right: paste the ssid cookie at least.';
-  if (e.includes('invalid: name')) return 'The name takes 3 to 32 letters, digits or _.';
-  if (e.includes('expired') || e.includes('auth answered')) return 'Riot refused this session. Sign in to Riot again and copy fresh cookies.';
-  if (status >= 500) return 'Something went wrong on our side. Try again in a moment.';
-  return error ? error.charAt(0).toUpperCase() + error.slice(1) : 'Something went wrong.';
+  if (e.includes('invalid: name')) return 'Names use 3 to 32 letters, digits or _.';
+  if (e.includes('invalid: password')) return 'Your password needs at least 8 characters.';
+  if (e.includes('wrong name or password')) return 'Wrong name or password.';
+  if (e.includes('name is taken')) return 'This name is taken, pick another one.';
+  if (e.includes('sign-ups are closed')) return 'Sign-ups are closed.';
+  if (e.includes('signed out') || e.includes('ticket expired')) return 'You were signed out. Sign in again.';
+  if (e.includes('invalid: cookies')) return 'These cookies do not look right: the ssid one is needed.';
+  if (e.includes('riot session expired') || e.includes('ssid') || e.includes('auth answered')) return 'Riot signed this account out. Add it again to keep watching it.';
+  if (e.includes('answered') || e.includes('region') || e.includes('riot')) return "Riot isn't answering right now. Recon tries again in a few minutes.";
+  return 'Something went wrong. Try again in a moment.';
 }
 
 let onSignedOut: () => void = () => {};
@@ -66,7 +72,7 @@ export async function api<T>(path: string, method = 'GET', body?: unknown): Prom
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new Failure(0, 'Cannot reach the server. Check your connection.');
+    throw new Failure(0, "Recon can't be reached. Check your connection.");
   }
   const data = (await res.json().catch(() => ({}))) as { error?: string };
   if (res.status === 401 && !path.startsWith('/web/')) onSignedOut();
