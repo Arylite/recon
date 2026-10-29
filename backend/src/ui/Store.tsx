@@ -58,7 +58,7 @@ function Offers({ account, wishlist, index, onOpen }: { account: AccountView; wi
             <div className="products">
                 {account.offers.map((o) => {
                     const skin = index?.skin(o.name);
-                    return <ProductCard key={o.name} offer={o} tier={index?.tier(o.tier)} hit={isWished(o.name, wishlist)} onOpen={skin && (() => onOpen(skin))} />;
+                    return <ProductCard key={o.name} offer={o} tier={index?.tierOf(skin, o.tier)} hit={isWished(o.name, wishlist)} onOpen={skin && (() => onOpen(skin))} />;
                 })}
             </div>
         </div>

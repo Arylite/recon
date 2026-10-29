@@ -20,7 +20,10 @@ function Shell({ user, onSignedOut }: { user: string; onSignedOut: () => void })
     const [open, setOpen] = useState<Skin | null>(null);
     const [adding, setAdding] = useState(false);
     const r = useRecon(user);
-    const index = useMemo(() => (r.catalog ? makeIndex(r.catalog) : null), [r.catalog]);
+    // Smart rarity for melee is a setting the browser keeps.
+    const [smart, setSmartState] = useState(() => cache.read<boolean>('smart') ?? false);
+    const setSmart = (v: boolean) => (setSmartState(v), cache.write('smart', v));
+    const index = useMemo(() => (r.catalog ? makeIndex(r.catalog, smart) : null), [r.catalog, smart]);
     const notifier = useNotifier(r.alerts);
     // Signed out at once; the server revokes the session in the background.
     const signOut = () => {
@@ -38,7 +41,7 @@ function Shell({ user, onSignedOut }: { user: string; onSignedOut: () => void })
                         {tab === 'store' && (
                             <Store accounts={r.accounts} wishlist={r.wishlist} index={index} loaded={r.loaded} onRefresh={() => void r.refresh()} onAdd={() => setAdding(true)} onOpen={setOpen} />
                         )}
-                        {tab === 'catalog' && <Catalog index={index} wishlist={r.wishlist} onAdd={r.addWish} onRemove={r.removeWish} onOpen={setOpen} />}
+                        {tab === 'catalog' && <Catalog index={index} wishlist={r.wishlist} smart={smart} onSmart={setSmart} onAdd={r.addWish} onRemove={r.removeWish} onOpen={setOpen} />}
                         {tab === 'wishlist' && <Wishlist wishlist={r.wishlist} index={index} onAdd={r.addWish} onRemove={r.removeWish} />}
                         {tab === 'accounts' && (
                             <Accounts
@@ -55,7 +58,7 @@ function Shell({ user, onSignedOut }: { user: string; onSignedOut: () => void })
                     </div>
                 </div>
             </div>
-            {open && <SkinSheet skin={open} tier={index?.tier(open.t)} watched={!!watched} onToggle={() => (watched ? r.removeWish(watched) : r.addWish(open.n))} onClose={() => setOpen(null)} />}
+            {open && <SkinSheet skin={open} tier={index?.tierOf(open)} watched={!!watched} onToggle={() => (watched ? r.removeWish(watched) : r.addWish(open.n))} onClose={() => setOpen(null)} />}
             {adding && (
                 <AddAccount
                     onClose={() => setAdding(false)}

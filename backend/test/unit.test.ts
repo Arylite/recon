@@ -10,6 +10,7 @@ import { shardFromAffinity } from '../src/profile';
 import { compact, createCatalog } from '../src/catalog';
 import { memoryKv } from '../src/kv';
 import { compactSkin, skinDetail } from '../src/skin';
+import { makeIndex } from '../src/ui/data';
 
 test('findNew matches case-insensitively and alerts once per day', () => {
   const names = ['Reaver Vandal', 'Prime Phantom'];
@@ -106,6 +107,37 @@ test('skin details keep variants and levels, drop foreign hosts, and are cached'
   await skinDetail(kv, 'u1', async () => (calls++, raw));
   await skinDetail(kv, 'u1', async () => (calls++, raw));
   assert.equal(calls, 1, 'the second call comes from Redis');
+});
+
+test('smart mode gives a melee the rarity of the rest of its line', () => {
+  const tiers = [
+    { id: 'sel', name: 'Select', color: '#5a9fe2', r: 0 },
+    { id: 'pre', name: 'Premium', color: '#d1548d', r: 2 },
+    { id: 'exc', name: 'Exclusive', color: '#f5955b', r: 3 },
+  ];
+  const skin = (l: string, n: string, w: string, t: string, s: string | null) => ({ u: `u-${l}`, l, n, i: `https://media.valorant-api.com/${l}.png`, t, w, s });
+  const catalog = {
+    tiers,
+    skins: [
+      skin('1', 'Reaver Vandal', 'Vandal', 'pre', 'Reaver'),
+      skin('2', 'Reaver Phantom', 'Phantom', 'pre', 'Reaver'),
+      skin('3', 'Reaver Sheriff', 'Sheriff', 'sel', 'Reaver'),
+      skin('4', 'Reaver Karambit', 'Melee', 'exc', 'Reaver'),
+      skin('5', 'Lonely Blade', 'Melee', 'exc', 'Lonely'),
+      skin('6', 'Mixed Vandal', 'Vandal', 'sel', 'Mixed'),
+      skin('7', 'Mixed Phantom', 'Phantom', 'exc', 'Mixed'),
+      skin('8', 'Mixed Dagger', 'Melee', 'exc', 'Mixed'),
+    ],
+  };
+  const [vandal, , , karambit, lonely, , , dagger] = catalog.skins as [ReturnType<typeof skin>, ...ReturnType<typeof skin>[]];
+  const plain = makeIndex(catalog);
+  const smart = makeIndex(catalog, true);
+  assert.equal(plain.tierOf(karambit)?.name, 'Exclusive', 'off: the game data as it is');
+  assert.equal(smart.tierOf(karambit)?.name, 'Premium', 'on: the most common rarity of the line');
+  assert.equal(smart.tierOf(vandal)?.name, 'Premium', 'a gun keeps its own rarity');
+  assert.equal(smart.tierOf(lonely)?.name, 'Exclusive', 'a line with no other weapon keeps it');
+  assert.equal(smart.tierOf(dagger)?.name, 'Exclusive', 'a tie goes to the higher rarity');
+  assert.equal(smart.tierOf(undefined, 'sel')?.name, 'Select', 'an unknown skin falls back to the id it came with');
 });
 
 test('source files stay small and ASCII', () => {

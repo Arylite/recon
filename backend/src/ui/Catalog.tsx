@@ -9,10 +9,10 @@ import { isWished, sameName, weaponRank, type Index } from './data';
 const GROUPS = ['Weapon', 'Rarity', 'Line'];
 
 /** Small toggle pill; a coloured dot when it stands for a rarity. */
-function Chip({ text, on, dot, onClick }: { text: string; on: boolean; dot?: string; onClick: () => void }) {
+function Chip({ text, on, dot, hint, onClick }: { text: string; on: boolean; dot?: string; hint?: string; onClick: () => void }) {
     const ref = useCssVar<HTMLButtonElement>('--tint', dot ?? 'transparent');
     return (
-        <button ref={ref} className="chip" aria-pressed={on} onClick={onClick}>
+        <button ref={ref} className="chip" aria-pressed={on} title={hint} onClick={onClick}>
             {dot && <i className="chip-dot" />}
             {text}
         </button>
@@ -20,8 +20,16 @@ function Chip({ text, on, dot, onClick }: { text: string; on: boolean; dot?: str
 }
 
 /** Every skin of the game, grouped by weapon, rarity or line, each one a tap away from the wishlist. */
-export function Catalog(props: { index: Index | null; wishlist: string[]; onAdd: (n: string) => void; onRemove: (n: string) => void; onOpen: (s: Skin) => void }) {
-    const { index, wishlist, onAdd, onRemove, onOpen } = props;
+export function Catalog(props: {
+    index: Index | null;
+    wishlist: string[];
+    smart: boolean;
+    onSmart: (v: boolean) => void;
+    onAdd: (n: string) => void;
+    onRemove: (n: string) => void;
+    onOpen: (s: Skin) => void;
+}) {
+    const { index, wishlist, smart, onSmart, onAdd, onRemove, onOpen } = props;
     const [query, setQuery] = useState('');
     const [group, setGroup] = useState(0);
     // Filters stack: several weapons and several rarities at once, plus "only what I watch".
@@ -39,12 +47,12 @@ export function Catalog(props: { index: Index | null; wishlist: string[]; onAdd:
             (s) =>
                 (!q || s.n.toLowerCase().includes(q) || (s.s ?? '').toLowerCase().includes(q)) &&
                 (weapon.length === 0 || weapon.includes(s.w)) &&
-                (rarity.length === 0 || (s.t !== null && rarity.includes(s.t))) &&
+                (rarity.length === 0 || rarity.includes(index.tierOf(s)?.id ?? '')) &&
                 (!onlyWatched || isWished(s.n, wishlist)),
         );
         const by = new Map<string, Skin[]>();
         for (const s of shown) {
-            const key = group === 0 ? s.w : group === 1 ? (index.tier(s.t)?.name ?? 'Other') : (s.s ?? 'Other');
+            const key = group === 0 ? s.w : group === 1 ? (index.tierOf(s)?.name ?? 'Other') : (s.s ?? 'Other');
             by.set(key, [...(by.get(key) ?? []), s]);
         }
         const rank = (name: string) => tiers.find((t) => t.name === name)?.r ?? -1;
@@ -89,12 +97,14 @@ export function Catalog(props: { index: Index | null; wishlist: string[]; onAdd:
                     </div>
                     <div className="chips">
                         <Chip text="On my wishlist" on={onlyWatched} onClick={() => setOnlyWatched(!onlyWatched)} />
+                        <Chip text="Smart melee rarity" on={smart} hint="The game gives every melee one rarity: take the rarity of the rest of its line instead" onClick={() => onSmart(!smart)} />
                         {filtered && (
                             <button className="chip chip-clear" onClick={clear}>
                                 Clear filters
                             </button>
                         )}
                     </div>
+                    {smart && <p className="fine">Smart mode: a melee skin gets the rarity of the rest of its line, since the game data gives every melee the same one.</p>}
                     {groups.length === 0 && (
                         <EmptyState icon="search" title="No skin matches" text="Try another word, or take a filter off.">
                             <button className="chip chip-clear" onClick={clear}>
@@ -116,7 +126,7 @@ export function Catalog(props: { index: Index | null; wishlist: string[]; onAdd:
                                             key={s.l}
                                             name={s.n}
                                             icon={s.i}
-                                            tier={index.tier(s.t)}
+                                            tier={index.tierOf(s)}
                                             action={watched ? 'remove' : 'add'}
                                             actionLabel={watched ? `Stop watching ${s.n}` : `Watch ${s.n}`}
                                             onAction={() => (watched ? onRemove(watched) : onAdd(s.n))}

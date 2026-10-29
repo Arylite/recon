@@ -2,8 +2,8 @@
 // confirms (stale while revalidate). Nothing secret is in it: the API never returns Riot cookies or
 // tickets. Every call is guarded, since storage can be full, blocked or empty in a private window.
 const PREFIX = 'recon.';
-// The browser-notification choice is a setting, not a cache: it survives a sign-out.
-const KEEP = new Set(['notify']);
+// The browser-notification and smart-rarity choices are settings, not a cache: they survive a sign-out.
+const KEEP = new Set(['notify', 'smart']);
 
 interface Entry<T> {
   at: number;

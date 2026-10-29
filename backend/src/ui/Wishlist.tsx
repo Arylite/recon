@@ -50,7 +50,7 @@ export function Wishlist({ wishlist, index, onAdd, onRemove }: { wishlist: strin
                     <Label>Results ({results.length})</Label>
                     <div className="minis">
                         {results.map((s) => (
-                            <MiniCard key={s.l} name={s.n} icon={s.i} tier={index?.tier(s.t)} action="add" actionLabel={`Watch ${s.n}`} onAction={() => add(s.n)} />
+                            <MiniCard key={s.l} name={s.n} icon={s.i} tier={index?.tierOf(s)} action="add" actionLabel={`Watch ${s.n}`} onAction={() => add(s.n)} />
                         ))}
                     </div>
                 </section>
@@ -63,7 +63,7 @@ export function Wishlist({ wishlist, index, onAdd, onRemove }: { wishlist: strin
                 <div className="minis">
                     {wishlist.map((w) => {
                         const skin = index?.skin(w);
-                        return <MiniCard key={w} name={w} icon={skin?.i ?? null} tier={index?.tier(skin?.t)} action="remove" actionLabel={`Stop watching ${w}`} onAction={() => onRemove(w)} />;
+                        return <MiniCard key={w} name={w} icon={skin?.i ?? null} tier={index?.tierOf(skin)} action="remove" actionLabel={`Stop watching ${w}`} onAction={() => onRemove(w)} />;
                     })}
                 </div>
             </section>
