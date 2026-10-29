@@ -2,7 +2,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Accounts } from './Accounts';
 import { AddAccount } from './AddAccount';
-import { api, whenSignedOut, type Skin } from './api';
+import { api, Failure, whenSignedOut, type Skin } from './api';
+import { cache } from './cache';
 import { Auth } from './Auth';
 import { Banner, Logo } from './bits';
 import { Catalog } from './Catalog';
@@ -18,7 +19,7 @@ function Shell({ user, onSignedOut }: { user: string; onSignedOut: () => void })
     const [tab, setTab] = useState('store');
     const [open, setOpen] = useState<Skin | null>(null);
     const [adding, setAdding] = useState(false);
-    const r = useRecon();
+    const r = useRecon(user);
     const index = useMemo(() => (r.catalog ? makeIndex(r.catalog) : null), [r.catalog]);
     const notifier = useNotifier(r.alerts);
     // Signed out at once; the server revokes the session in the background.
@@ -71,27 +72,32 @@ function Shell({ user, onSignedOut }: { user: string; onSignedOut: () => void })
 }
 
 export function App() {
-    // undefined while the session is being checked, null when signed out.
+    // undefined while nothing is known yet, null when signed out.
     const [user, setUser] = useState<string | null | undefined>(undefined);
+    const signedOut = () => (cache.clear(), setUser(null));
     useEffect(() => {
-        whenSignedOut(() => setUser(null));
+        whenSignedOut(() => (cache.clear(), setUser(null)));
+        // Whoever signed in here last is shown at once with what they saw last; the server then confirms the session.
+        const known = cache.read<string>('user');
+        if (known) setUser(known);
         api<{ name: string }>('/me').then(
-            (res) => setUser(res.name),
-            () => setUser(null),
+            (res) => (cache.write('user', res.name), setUser(res.name)),
+            // Only an ended session signs out; a dropped connection keeps what is on screen.
+            (e: unknown) => ((e instanceof Failure && e.status === 401) || !known ? signedOut() : undefined),
         );
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
         <>
             {user === undefined ? (
-                // The ping of the logo while the session is checked.
                 <div className="boot" role="status" aria-label="Loading">
                     <Logo size={72} />
                 </div>
             ) : user === null ? (
-                <Auth onSignedIn={setUser} />
+                <Auth onSignedIn={(name) => (cache.write('user', name), setUser(name))} />
             ) : (
-                <Shell user={user} onSignedOut={() => setUser(null)} />
+                <Shell user={user} onSignedOut={signedOut} />
             )}
         </>
     );

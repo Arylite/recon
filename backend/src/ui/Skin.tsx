@@ -1,20 +1,23 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { api, safeArt, type Skin, type SkinDetail, type Tier } from './api';
+import { cache, DAY } from './cache';
 import { Icon, PillButton, TierTag, useTint } from './bits';
 import { Sheet } from './Sheet';
 
 /** One skin up close: what it is, its colour variants and what each upgrade level adds, with the videos. */
 export function SkinSheet({ skin, tier, watched, onToggle, onClose }: { skin: Skin; tier: Tier | undefined; watched: boolean; onToggle: () => void; onClose: () => void }) {
-    const [detail, setDetail] = useState<SkinDetail | null>(null);
+    // A skin hardly ever changes: what was fetched before shows at once and is kept for a week.
+    const [detail, setDetail] = useState<SkinDetail | null>(() => cache.read<SkinDetail>(`skin:${skin.u}`, 7 * DAY));
     const [failed, setFailed] = useState(false);
     const [variant, setVariant] = useState(0);
     const ref = useTint<HTMLDivElement>(tier);
 
     useEffect(() => {
         let alive = true;
+        if (cache.read(`skin:${skin.u}`, 7 * DAY)) return;
         api<SkinDetail>(`/skins/${skin.u}`).then(
-            (d) => alive && setDetail(d),
+            (d) => alive && (cache.write(`skin:${skin.u}`, d), setDetail(d)),
             () => alive && setFailed(true),
         );
         return () => void (alive = false);

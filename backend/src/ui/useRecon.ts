@@ -1,9 +1,17 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, friendly, type AccountView, type Alert, type Catalog } from './api';
+import { cache, DAY } from './cache';
 import { sameName } from './data';
 
 const PENDING = 'pending-';
+interface Saved {
+  accounts: AccountView[];
+  wishlist: string[];
+  alerts: Alert[];
+}
+/** The old value when the new one is the same, so React sees no change. */
+const keep = <T>(prev: T, next: T): T => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
 export const isPending = (a: AccountView) => a.id.startsWith(PENDING);
 
 /**
@@ -11,12 +19,14 @@ export const isPending = (a: AccountView) => a.id.startsWith(PENDING);
  * background. While changes are in flight a refresh is skipped, so a stale answer never undoes one;
  * when the last one lands the lists are reloaded, which also rolls back a change that failed.
  */
-export function useRecon() {
-  const [accounts, setAccounts] = useState<AccountView[]>([]);
-  const [wishlist, setWishlist] = useState<string[]>([]);
-  const [alerts, setAlerts] = useState<Alert[] | null>(null);
-  const [catalog, setCatalog] = useState<Catalog | null>(null);
-  const [loaded, setLoaded] = useState(false);
+export function useRecon(user: string) {
+  // What the browser remembers of this person paints at once; the server then confirms it.
+  const [saved] = useState(() => cache.read<Saved>(`data:${user}`));
+  const [accounts, setAccounts] = useState<AccountView[]>(saved?.accounts ?? []);
+  const [wishlist, setWishlist] = useState<string[]>(saved?.wishlist ?? []);
+  const [alerts, setAlerts] = useState<Alert[] | null>(saved?.alerts ?? null);
+  const [catalog, setCatalog] = useState<Catalog | null>(() => cache.read<Catalog>('catalog'));
+  const [loaded, setLoaded] = useState(!!saved);
   const [message, setMessage] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState('');
@@ -29,9 +39,10 @@ export function useRecon() {
       const [a, w, al] = await Promise.all([api<AccountView[]>('/accounts'), api<string[]>('/wishlist'), api<Alert[]>('/alerts')]);
       // A change started while this was loading: the answer predates it.
       if (inflight.current > 0) return;
-      setAccounts(a);
-      setWishlist(w);
-      setAlerts(al);
+      // The same data keeps the same objects, so nothing re-renders or re-animates for nothing.
+      setAccounts((prev) => keep(prev, a));
+      setWishlist((prev) => keep(prev, w));
+      setAlerts((prev) => keep(prev, al));
       setLoaded(true);
     } catch (e) {
       fail(e);
@@ -78,7 +89,10 @@ export function useRecon() {
 
   useEffect(() => {
     void refresh();
-    api<Catalog>('/catalog').then(setCatalog, fail);
+    // The catalog is big and changes once a day: fetched again only when the saved copy is old.
+    if (cache.age('catalog') > DAY / 2) {
+      api<Catalog>('/catalog').then((c) => (cache.write('catalog', c), setCatalog((prev) => keep(prev, c))), fail);
+    }
     const t = setInterval(() => document.visibilityState === 'visible' && void refresh(), 30_000);
     return () => clearInterval(t);
   }, [refresh, fail]);
@@ -89,6 +103,12 @@ export function useRecon() {
     const t = setInterval(() => void refresh(), 3000);
     return () => clearInterval(t);
   }, [waiting, refresh]);
+  // Saved a moment after each change, without the account that is still being added.
+  useEffect(() => {
+    if (!loaded) return;
+    const t = setTimeout(() => cache.write(`data:${user}`, { accounts: accounts.filter((a) => !isPending(a)), wishlist, alerts: alerts ?? [] }), 400);
+    return () => clearTimeout(t);
+  }, [accounts, wishlist, alerts, loaded, user]);
   useEffect(() => {
     if (!note) return;
     const t = setTimeout(() => setNote(''), 3500);
