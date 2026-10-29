@@ -524,10 +524,12 @@ textarea:focus-visible {
 }
 .mini-bottom {
   position: relative;
-  z-index: 1;
+  z-index: 4;
   display: flex;
   align-items: flex-end;
   gap: 8px;
+  /* Above the tile's own button so the round action can be hit; everything else lets the click through. */
+  pointer-events: none;
 }
 .mini-bottom h3 {
   display: -webkit-box;
