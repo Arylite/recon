@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Field, IconBtn, Label } from './bits';
 import { MiniCard } from './cards';
+import { EmptyState } from './Empty';
 import { LINES, sameName, type Index } from './data';
 
 export function Wishlist({ wishlist, index, onAdd, onRemove }: { wishlist: string[]; index: Index | null; onAdd: (n: string) => void; onRemove: (n: string) => void }) {
@@ -56,7 +57,9 @@ export function Wishlist({ wishlist, index, onAdd, onRemove }: { wishlist: strin
             )}
             <section className="stack">
                 <Label>Watching ({wishlist.length})</Label>
-                {wishlist.length === 0 && <p className="empty-note dashed">Nothing watched yet. Search a skin, or add a whole line above.</p>}
+                {wishlist.length === 0 && (
+                    <EmptyState icon="wishlist" title="Nothing watched yet" text="Search a skin above, or add a whole line with one tap. You get a notification the day one is in your store." />
+                )}
                 <div className="minis">
                     {wishlist.map((w) => {
                         const skin = index?.skin(w);

@@ -93,4 +93,29 @@ export async function clientHash(name: string, password: string): Promise<string
 const ART = 'https://media.valorant-api.com/';
 /** Skin art is the only thing loaded from outside; anything else is dropped. */
 export const safeArt = (url: string | null): string | null => (url?.startsWith(ART) ? url : null);
-export const safeColor = (c: string | undefined): string => (c && /^#[0-9a-f]{6}$/i.test(c) ? c : '#8F8B85');
+const FALLBACK = '#8F8B85';
+/**
+ * The game's five rarity colours are loud and unrelated; keeping each hue but pulling saturation and
+ * lightness to the same level makes them one family next to the neutral surfaces.
+ */
+export function safeColor(c: string | undefined): string {
+  if (!c || !/^#[0-9a-f]{6}$/i.test(c)) return FALLBACK;
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16) / 255) as [number, number, number];
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max === min) return FALLBACK;
+  const d = max - min;
+  const h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) / 6 : max === g ? ((b - r) / d + 2) / 6 : ((r - g) / d + 4) / 6;
+  const s = 0.55;
+  const l = 0.62;
+  const q = l + s - l * s;
+  const p = 2 * l - q;
+  const f = (t: number) => {
+    const x = (t + 1) % 1;
+    const v = x < 1 / 6 ? p + (q - p) * 6 * x : x < 1 / 2 ? q : x < 2 / 3 ? p + (q - p) * (2 / 3 - x) * 6 : p;
+    return Math.round(v * 255)
+      .toString(16)
+      .padStart(2, '0');
+  };
+  return `#${f(h + 1 / 3)}${f(h)}${f(h - 1 / 3)}`;
+}

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { friendly, type AccountView, type Skin } from './api';
 import { IconBtn, Label, Logo, PillButton, Segmented, Skeleton } from './bits';
 import { ProductCard } from './cards';
+import { EmptyState } from './Empty';
 import { isWished, type Index } from './data';
 
 const DAY_MS = 24 * 3600 * 1000;
@@ -32,7 +33,7 @@ const Loading = ({ text }: { text: string }) => (
     </div>
 );
 
-/** No Riot account yet: the four daily slots drawn empty, the first one pinging. */
+/** No Riot account yet: the four daily slots drawn empty on the grid of the cards, the first one pinging. */
 const Empty = ({ onAdd }: { onAdd: () => void }) => (
     <div className="stack">
         <div className="slots">
@@ -42,9 +43,9 @@ const Empty = ({ onAdd }: { onAdd: () => void }) => (
                 </div>
             ))}
         </div>
-        <h2 className="name">Your four daily skins land here</h2>
-        <p className="body mute">Add your Riot account and Recon checks your store every 15 minutes, even with the tab closed.</p>
-        <PillButton onClick={onAdd}>Add a Riot account</PillButton>
+        <EmptyState title="Your four daily skins land here" text="Add your Riot account and Recon checks your store every 15 minutes, even with the tab closed.">
+            <PillButton onClick={onAdd}>Add a Riot account</PillButton>
+        </EmptyState>
     </div>
 );
 
@@ -78,7 +79,18 @@ export function Store(props: { accounts: AccountView[]; wishlist: string[]; inde
                 <div>
                     <Label>Store resets in</Label>
                     <p className="clock">{left}</p>
-                    {hits > 0 && <p className="skin-line ember">{hits === 1 ? '1 skin from your wishlist today' : `${hits} skins from your wishlist today`}</p>}
+                    {/* The line is always there, so a hit never pushes the page down. */}
+                    <p className={`skin-line hits ${hits > 0 ? 'ember' : 'mute'}`}>
+                        {!account || account.offers.length === 0 ? (
+                            <>&nbsp;</>
+                        ) : hits === 0 ? (
+                            'None from your wishlist today'
+                        ) : hits === 1 ? (
+                            '1 skin from your wishlist today'
+                        ) : (
+                            `${hits} skins from your wishlist today`
+                        )}
+                    </p>
                 </div>
                 <IconBtn icon="refresh" label="Refresh" onClick={onRefresh} />
             </header>

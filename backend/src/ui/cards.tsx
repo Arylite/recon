@@ -2,24 +2,37 @@ import type { Offer } from '../types';
 import { safeArt, type Tier } from './api';
 import { HitTag, Icon, Label, TierTag, useTint } from './bits';
 
-/** A store offer: name and tier on top, the skin art in its tier glow, the price at the bottom. */
+/**
+ * A store offer, flat and clean: the skin on its plate with its rarity, the name and price below with
+ * the round arrow. A wishlist hit only changes colours, never a size, so nothing around it moves.
+ */
 export function ProductCard({ offer, tier, hit, onOpen }: { offer: Offer; tier: Tier | undefined; hit: boolean; onOpen?: () => void }) {
-    const ref = useTint<HTMLElement>(tier, hit);
+    const ref = useTint<HTMLElement>(tier);
     const art = safeArt(offer.icon);
     return (
         <article ref={ref} className={`product${hit ? ' product-hit' : ''}`}>
             {onOpen && <button className="tile-hit" aria-label={`Open ${offer.name}`} onClick={onOpen} />}
-            <div className="product-top">
-                <h3>{offer.name}</h3>
+            <div className="plate">
                 <TierTag tier={tier} />
+                {art && <img src={art} alt="" referrerPolicy="no-referrer" />}
             </div>
-            <div className="product-art">{art && <img src={art} alt="" referrerPolicy="no-referrer" />}</div>
             <div className="product-bottom">
                 <div>
-                    <Label>Price</Label>
-                    <p className="price">{offer.cost === null ? '-' : `${offer.cost.toLocaleString('en-US')} VP`}</p>
+                    <h3>{offer.name}</h3>
+                    <p className="price">
+                        {offer.cost === null ? '-' : offer.cost.toLocaleString('en-US')}
+                        <small>VP</small>
+                    </p>
                 </div>
-                {hit && <HitTag />}
+                <span className="product-end">
+                    {hit ? (
+                        <HitTag />
+                    ) : (
+                        <span className="go">
+                            <Icon name="arrow" size={18} />
+                        </span>
+                    )}
+                </span>
             </div>
         </article>
     );

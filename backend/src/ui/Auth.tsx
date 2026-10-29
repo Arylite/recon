@@ -32,7 +32,6 @@ export function Auth({ onSignedIn }: { onSignedIn: (name: string) => void }) {
 
     return (
         <>
-            <div className="glow" aria-hidden="true" />
             <main className="auth">
                 <section className="auth-brand">
                     <Logo />

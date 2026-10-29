@@ -1,10 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { api, safeArt, type Skin, type SkinDetail, type Tier } from './api';
-import { Icon, PillButton, Skeleton, TierTag, useTint } from './bits';
+import { Icon, PillButton, TierTag, useTint } from './bits';
 import { Sheet } from './Sheet';
 
-/** One skin up close: its colour variants and what each upgrade level adds, with the videos. */
+/** One skin up close: what it is, its colour variants and what each upgrade level adds, with the videos. */
 export function SkinSheet({ skin, tier, watched, onToggle, onClose }: { skin: Skin; tier: Tier | undefined; watched: boolean; onToggle: () => void; onClose: () => void }) {
     const [detail, setDetail] = useState<SkinDetail | null>(null);
     const [failed, setFailed] = useState(false);
@@ -21,6 +21,8 @@ export function SkinSheet({ skin, tier, watched, onToggle, onClose }: { skin: Sk
     }, [skin.u]);
 
     const render = safeArt(detail?.variants[variant]?.render ?? null) ?? safeArt(skin.i);
+    // Both counts are known once the details are in; until then the rows say so instead of jumping.
+    const count = (n: number | undefined) => (failed ? '-' : n === undefined ? '...' : n <= 1 ? 'None' : String(n));
     return (
         <Sheet wide caption={[skin.w, skin.s].filter(Boolean).join('  /  ')} onClose={onClose}>
             <h1 className="title">{skin.n}</h1>
@@ -34,13 +36,26 @@ export function SkinSheet({ skin, tier, watched, onToggle, onClose }: { skin: Sk
                     <PillButton onClick={onToggle}>{watched ? 'Remove from wishlist' : 'Add to wishlist'}</PillButton>
                 </div>
                 <div className="col">
+                    {/* Always there, so the right side is never empty and lines up with the art. */}
+                    <dl className="facts card">
+                        <div>
+                            <dt className="label">Weapon</dt>
+                            <dd className="skin-line">{skin.w || '-'}</dd>
+                        </div>
+                        <div>
+                            <dt className="label">Line</dt>
+                            <dd className="skin-line">{skin.s ?? '-'}</dd>
+                        </div>
+                        <div>
+                            <dt className="label">Variants</dt>
+                            <dd className="skin-line">{count(detail?.variants.length)}</dd>
+                        </div>
+                        <div>
+                            <dt className="label">Levels</dt>
+                            <dd className="skin-line">{count(detail?.levels.length)}</dd>
+                        </div>
+                    </dl>
                     {failed && <p className="body ember">Couldn&apos;t load the variants. Check your connection.</p>}
-                    {!detail && !failed && (
-                        <>
-                            <Skeleton height={56} />
-                            <Skeleton height={56} />
-                        </>
-                    )}
                     {detail && detail.variants.length > 1 && (
                         <section className="stack">
                             <span className="label">Variants</span>

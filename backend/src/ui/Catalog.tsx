@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import type { Skin } from './api';
 import { Field, Label, Segmented, Skeleton, useCssVar } from './bits';
 import { MiniCard } from './cards';
+import { EmptyState } from './Empty';
 import { isWished, sameName, weaponRank, type Index } from './data';
 
 const GROUPS = ['Weapon', 'Rarity', 'Line'];
@@ -94,7 +95,13 @@ export function Catalog(props: { index: Index | null; wishlist: string[]; onAdd:
                             </button>
                         )}
                     </div>
-                    {groups.length === 0 && <p className="empty-note dashed">No skin matches. Try another word or clear a filter.</p>}
+                    {groups.length === 0 && (
+                        <EmptyState icon="search" title="No skin matches" text="Try another word, or take a filter off.">
+                            <button className="chip chip-clear" onClick={clear}>
+                                Clear filters
+                            </button>
+                        </EmptyState>
+                    )}
                     {groups.map(([name, list]) => (
                         <section key={name} className="group">
                             <div className="group-head">

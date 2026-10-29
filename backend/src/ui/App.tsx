@@ -4,7 +4,7 @@ import { Accounts } from './Accounts';
 import { AddAccount } from './AddAccount';
 import { api, whenSignedOut, type Skin } from './api';
 import { Auth } from './Auth';
-import { Banner } from './bits';
+import { Banner, Logo } from './bits';
 import { Catalog } from './Catalog';
 import { makeIndex, sameName } from './data';
 import { NavBar } from './NavBar';
@@ -30,7 +30,6 @@ function Shell({ user, onSignedOut }: { user: string; onSignedOut: () => void })
     const watched = open ? r.wishlist.find((w) => sameName(w, open.n)) : undefined;
     return (
         <>
-            {tab === 'store' && <div className="glow" aria-hidden="true" />}
             <div className="shell">
                 <NavBar current={tab} user={user} onSelect={setTab} />
                 <div className="app">
@@ -82,6 +81,18 @@ export function App() {
         );
     }, []);
 
-    if (user === undefined) return <div className="boot" role="status" aria-label="Loading" />;
-    return user === null ? <Auth onSignedIn={setUser} /> : <Shell user={user} onSignedOut={() => setUser(null)} />;
+    return (
+        <>
+            {user === undefined ? (
+                // The ping of the logo while the session is checked.
+                <div className="boot" role="status" aria-label="Loading">
+                    <Logo size={72} />
+                </div>
+            ) : user === null ? (
+                <Auth onSignedIn={setUser} />
+            ) : (
+                <Shell user={user} onSignedOut={() => setUser(null)} />
+            )}
+        </>
+    );
 }

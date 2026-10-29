@@ -178,14 +178,6 @@ code {
   align-items: center;
   justify-content: space-between;
 }
-/* The warm light in the corner is the only ambient colour; the cards carry the rest. */
-.glow {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: radial-gradient(circle 60vw at 10% 0, rgb(232 73 47 / 0.16), transparent);
-}
 .auth {
   display: grid;
   gap: 28px;
@@ -372,7 +364,8 @@ textarea:focus-visible {
   background: var(--panel);
 }
 
-/* Cards: a soft pool of tier colour behind the art tells the rarity at a glance. */
+/* Cards: flat and crisp. A panel, a hairline, a plate for the art with a faint dot grid. No glow: the
+   rarity is only the small bar next to its name. */
 .product,
 .mini {
   --tint: var(--mute);
@@ -380,12 +373,12 @@ textarea:focus-visible {
   container-type: inline-size;
   overflow: hidden;
   border: 1px solid var(--rule);
-  background: radial-gradient(circle 60cqw at 50% 55%, color-mix(in srgb, var(--tint) 28%, transparent), transparent) var(--panel);
+  background: var(--panel);
 }
 .tile-hit {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 3;
   width: 100%;
   border-radius: inherit;
 }
@@ -400,45 +393,109 @@ textarea:focus-visible {
 .product {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  height: 272px;
-  padding: 20px;
-  border-radius: 28px;
+  gap: 14px;
+  min-height: 330px;
+  padding: 14px;
+  border-radius: 24px;
 }
+/* A hit only changes a colour, never a size: the border stays 1px. */
 .product-hit {
-  border: 1.5px solid var(--ember);
+  border-color: var(--ember);
 }
-.product-top {
-  display: grid;
-  gap: 8px;
-  padding-right: 0;
-}
-.product-top h3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  padding-right: 56px;
-  font-size: 22px;
-  line-height: 26px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-}
-.product-art {
-  position: absolute;
-  inset: 76px 20px 76px;
+/* The plate under the art, with dots that fade towards its edges: a texture, not a light. */
+.plate,
+.hero {
+  position: relative;
   display: grid;
   place-items: center;
+  overflow: hidden;
+  background: var(--raised);
 }
-.product-art img {
-  max-width: 100%;
-  max-height: 110px;
+.plate::before,
+.hero::before,
+.mini::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgb(255 255 255 / 0.12) 1px, transparent 1.5px);
+  background-size: 14px 14px;
+  -webkit-mask-image: radial-gradient(circle at 50% 56%, #000 12%, transparent 74%);
+  mask-image: radial-gradient(circle at 50% 56%, #000 12%, transparent 74%);
+}
+.plate {
+  flex: 1;
+  min-height: 168px;
+  border-radius: 16px;
+}
+.plate .tiertag {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1;
+}
+.plate img {
+  position: relative;
+  max-width: 88%;
+  max-height: 132px;
+  margin-top: 14px;
   object-fit: contain;
+  filter: drop-shadow(0 8px 8px rgb(0 0 0 / 0.35));
 }
 .product-bottom {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px 4px;
+}
+.product-bottom h3 {
+  display: -webkit-box;
+  min-height: 48px;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+.price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 18px;
+  line-height: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.price small {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 1.2px;
+  color: var(--mute);
+}
+/* The slot is always as tall as the round button, so a hit tag never changes the card. */
+.product-end {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: 44px;
+}
+.go {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--raised);
+  color: var(--bone);
+}
+.hits {
+  min-height: 20px;
 }
 .minis {
   display: grid;
@@ -451,16 +508,16 @@ textarea:focus-visible {
   justify-content: flex-end;
   height: 176px;
   padding: 14px;
-  border-radius: 22px;
-  background: radial-gradient(circle 60cqw at 50% 35%, color-mix(in srgb, var(--tint) 28%, transparent), transparent) var(--panel);
+  border-radius: 20px;
 }
 .mini-art {
   position: absolute;
-  top: 28px;
+  top: 22px;
   left: 14px;
   width: calc(100% - 28px);
-  height: 64px;
+  height: 68px;
   object-fit: contain;
+  filter: drop-shadow(0 8px 8px rgb(0 0 0 / 0.35));
 }
 .mini-loose {
   position: absolute;
@@ -477,6 +534,8 @@ textarea:focus-visible {
   background: var(--tint);
 }
 .mini-bottom {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: flex-end;
   gap: 8px;
@@ -485,16 +544,16 @@ textarea:focus-visible {
   display: -webkit-box;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  overflow: hidden;
   font-size: 16px;
   line-height: 20px;
   font-weight: 500;
 }
 .mini-action {
   position: relative;
-  z-index: 2;
+  z-index: 4;
   display: grid;
   place-items: center;
   flex: none;
@@ -507,6 +566,7 @@ textarea:focus-visible {
 .mini-action-big {
   width: 40px;
   height: 40px;
+  pointer-events: auto;
 }
 .mini-action button {
   display: grid;
@@ -516,11 +576,8 @@ textarea:focus-visible {
   border-radius: 50%;
   pointer-events: auto;
 }
-.mini-action-big {
-  pointer-events: auto;
-}
 .mini-action-big:hover {
-  background: var(--tint);
+  background: var(--bone);
   color: var(--ink);
 }
 
@@ -779,15 +836,10 @@ textarea:focus-visible {
   justify-content: space-between;
 }
 .hero {
-  --tint: var(--mute);
-  display: grid;
-  place-items: center;
   height: 220px;
   padding: 24px;
   border: 1px solid var(--rule);
-  border-radius: 28px;
-  container-type: inline-size;
-  background: radial-gradient(circle 60cqw at 50% 55%, color-mix(in srgb, var(--tint) 28%, transparent), transparent) var(--panel);
+  border-radius: 24px;
 }
 .hero img {
   max-width: 100%;
@@ -999,13 +1051,10 @@ textarea:focus-visible {
     line-height: 60px;
   }
   .product {
-    height: 320px;
+    min-height: 360px;
   }
-  .product-art {
-    inset: 84px 20px 84px;
-  }
-  .product-art img {
-    max-height: 150px;
+  .plate img {
+    max-height: 156px;
   }
   /* The four daily skins fit one row from about 1350px wide. */
   .products {
@@ -1069,8 +1118,7 @@ textarea:focus-visible {
     display: grid;
     place-items: center;
     padding: 32px;
-    background: rgb(8 8 8 / 0.72);
-    backdrop-filter: blur(8px);
+    background: rgb(8 8 8 / 0.8);
   }
   .sheet-body {
     width: 100%;
@@ -1102,5 +1150,105 @@ textarea:focus-visible {
   }
   .minis {
     grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  }
+}
+
+.boot {
+  display: grid;
+  place-items: center;
+}
+
+/* A pointer: a card lifts a little and its hairline brightens. Nothing glows. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .product,
+  .mini {
+    transition: transform 0.2s ease, border-color 0.2s;
+  }
+  .product:hover,
+  .mini:hover {
+    transform: translateY(-2px);
+    border-color: #444;
+  }
+  .product-hit:hover {
+    border-color: var(--ember);
+  }
+  .product:hover .go {
+    background: var(--bone);
+    color: var(--ink);
+  }
+}
+
+/* Empty states and the facts of a skin: centered, aligned to the grid, never a blank corner. */
+.emptystate {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 10px;
+  min-height: 240px;
+  padding: 40px 24px;
+  text-align: center;
+}
+.emptystate p {
+  max-width: 46ch;
+}
+.emptystate .pillbtn {
+  width: min(100%, 360px);
+  margin-top: 8px;
+}
+.emptyicon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: var(--raised);
+}
+.slots {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.slot {
+  display: grid;
+  place-items: center;
+  height: 124px;
+}
+.facts {
+  display: grid;
+  margin: 0;
+}
+.facts > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  border-top: 1px solid var(--rule);
+}
+.facts > div:first-child {
+  border-top: 0;
+}
+.facts dd {
+  margin: 0;
+}
+@media (min-width: 640px) {
+  .slots {
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    gap: 16px;
+  }
+  .slot {
+    height: 360px;
+  }
+}
+@media (min-width: 960px) {
+  .skin-cols {
+    align-items: stretch;
+  }
+  .skin-cols > .col:first-child {
+    grid-template-rows: 1fr auto;
+  }
+  .skin-cols .hero {
+    height: auto;
+    min-height: 300px;
   }
 }

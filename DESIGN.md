@@ -22,3 +22,12 @@ Outfit is served from the app itself (`src/app/fonts`); nothing is loaded from a
 skin art. Sign-in card with the segmented switch; three tabs (Store, Wishlist, Setup) in the floating pill
 bar; the clock counts down to the 00:00 UTC rotation. Skin glow is set through the CSSOM, because the
 Content-Security-Policy forbids style attributes.
+
+### Clean and lean
+
+Flat surfaces on one neutral ground: a panel, a hairline border, a plate for the art with a faint dot
+grid (CSS only). No glow, no blur, no ambient animation. A rarity is a small bar next to its name, and
+the five game colours are pulled to the same saturation and lightness so they read as one family. Ember
+stays for a wishlist hit and an error. Motion is a short fade between screens, a card that lifts two
+pixels under the pointer, and skeletons; all off for `prefers-reduced-motion`. A wishlist hit changes
+colours only, never a size, so nothing moves when one shows up.
