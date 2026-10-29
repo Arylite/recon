@@ -2,17 +2,19 @@
 import { friendly, type AccountView } from './api';
 import { Icon, IconBtn, Label, PillButton, Skeleton, type IconName } from './bits';
 import type { Notifier } from './notify';
+import { isPending } from './useRecon';
 
 function AccountRow({ account, onDelete }: { account: AccountView; onDelete: () => void }) {
     const failed = account.error !== null;
     const name = account.name.split('#')[0] ?? account.name;
+    const pending = isPending(account);
     return (
         <li className="row">
             <div>
                 <p className="skin-line">{name}</p>
-                <p className={`body ${failed ? 'ember' : 'mute'}`}>{failed ? friendly(0, account.error) : 'Watching'}</p>
+                <p className={`body ${failed ? 'ember' : 'mute'}`}>{failed ? friendly(0, account.error) : pending ? 'Signing in to Riot...' : 'Watching'}</p>
             </div>
-            <IconBtn icon="remove" label={`Remove ${account.name}`} onClick={onDelete} />
+            {!pending && <IconBtn icon="remove" label={`Remove ${account.name}`} onClick={onDelete} />}
         </li>
     );
 }

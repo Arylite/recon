@@ -19,49 +19,51 @@ export function Wishlist({ wishlist, index, onAdd, onRemove }: { wishlist: strin
                 <Label>Pinged when it shows up</Label>
                 <h1 className="title">Wishlist</h1>
             </header>
-            <div className="split">
-                <div className="col">
+            {/* Search on the left, the quick lines beside it on a wide screen; stacked on a phone. */}
+            <div className="wish-bar">
+                <div className="stack">
+                    <Field label="Search a skin or a line" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" spellCheck={false} maxLength={64} />
+                    {query.trim() && (
+                        // Matching is a substring test, so a loose word watches a whole line of skins.
+                        <div className="loose">
+                            <p className="body mute">Any skin containing &quot;{query.trim()}&quot;</p>
+                            <IconBtn icon="add" label={`Watch any skin containing ${query.trim()}`} onClick={() => add(query.trim())} />
+                        </div>
+                    )}
+                </div>
+                {!query.trim() && quick.length > 0 && (
                     <section className="stack">
-                        <Field label="Search a skin or a line" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" spellCheck={false} maxLength={64} />
-                        {query.trim() && (
-                            // Matching is a substring test, so a loose word watches a whole line of skins.
-                            <div className="loose">
-                                <p className="body mute">Any skin containing &quot;{query.trim()}&quot;</p>
-                                <IconBtn icon="add" label={`Watch any skin containing ${query.trim()}`} onClick={() => add(query.trim())} />
-                            </div>
-                        )}
-                        <div className="minis">
-                            {results.map((s) => (
-                                <MiniCard key={s.l} name={s.n} icon={s.i} tier={index?.tier(s.t)} action="add" actionLabel={`Watch ${s.n}`} onAction={() => add(s.n)} />
+                        <Label>Quick add a whole line</Label>
+                        <div className="chips chips-wrap">
+                            {quick.map((l) => (
+                                <button key={l} className="chip chip-quick" onClick={() => add(l)}>
+                                    + {l}
+                                </button>
                             ))}
                         </div>
                     </section>
-                    {!query.trim() && quick.length > 0 && (
-                        <section className="stack">
-                            <Label>Quick add a whole line</Label>
-                            <div className="chips chips-wrap">
-                                {quick.map((l) => (
-                                    <button key={l} className="chip chip-quick" onClick={() => add(l)}>
-                                        + {l}
-                                    </button>
-                                ))}
-                            </div>
-                        </section>
-                    )}
-                </div>
-                <div className="col">
-                    <section className="stack">
-                        <Label>Watching ({wishlist.length})</Label>
-                        {wishlist.length === 0 && <p className="empty-note dashed">Nothing watched yet. Search a skin, or add a whole line above.</p>}
-                        <div className="minis">
-                            {wishlist.map((w) => {
-                                const skin = index?.skin(w);
-                                return <MiniCard key={w} name={w} icon={skin?.i ?? null} tier={index?.tier(skin?.t)} action="remove" actionLabel={`Stop watching ${w}`} onAction={() => onRemove(w)} />;
-                            })}
-                        </div>
-                    </section>
-                </div>
+                )}
             </div>
+            {results.length > 0 && (
+                <section className="stack">
+                    <Label>Results ({results.length})</Label>
+                    <div className="minis">
+                        {results.map((s) => (
+                            <MiniCard key={s.l} name={s.n} icon={s.i} tier={index?.tier(s.t)} action="add" actionLabel={`Watch ${s.n}`} onAction={() => add(s.n)} />
+                        ))}
+                    </div>
+                </section>
+            )}
+            <section className="stack">
+                <Label>Watching ({wishlist.length})</Label>
+                {wishlist.length === 0 && <p className="empty-note dashed">Nothing watched yet. Search a skin, or add a whole line above.</p>}
+                <div className="minis">
+                    {wishlist.map((w) => {
+                        const skin = index?.skin(w);
+                        return <MiniCard key={w} name={w} icon={skin?.i ?? null} tier={index?.tier(skin?.t)} action="remove" actionLabel={`Stop watching ${w}`} onAction={() => onRemove(w)} />;
+                    })}
+                </div>
+            </section>
         </div>
     );
 }
