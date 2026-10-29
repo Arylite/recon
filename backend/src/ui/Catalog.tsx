@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import type { Skin } from './api';
 import { Field, Label, Segmented, Skeleton, useCssVar } from './bits';
 import { MiniCard } from './cards';
-import { sameName, weaponRank, type Index } from './data';
+import { isWished, sameName, weaponRank, type Index } from './data';
 
 const GROUPS = ['Weapon', 'Rarity', 'Line'];
 
@@ -23,8 +23,10 @@ export function Catalog(props: { index: Index | null; wishlist: string[]; onAdd:
     const { index, wishlist, onAdd, onRemove, onOpen } = props;
     const [query, setQuery] = useState('');
     const [group, setGroup] = useState(0);
-    const [weapon, setWeapon] = useState<string | null>(null);
-    const [rarity, setRarity] = useState<string | null>(null);
+    // Filters stack: several weapons and several rarities at once, plus "only what I watch".
+    const [weapon, setWeapon] = useState<string[]>([]);
+    const [rarity, setRarity] = useState<string[]>([]);
+    const [onlyWatched, setOnlyWatched] = useState(false);
     const skins = index?.catalog.skins;
     const tiers = useMemo(() => [...(index?.catalog.tiers ?? [])].sort((a, b) => a.r - b.r), [index]);
     const weapons = useMemo(() => [...new Set((skins ?? []).map((s) => s.w).filter(Boolean))].sort((a, b) => weaponRank(a) - weaponRank(b)), [skins]);
@@ -32,7 +34,13 @@ export function Catalog(props: { index: Index | null; wishlist: string[]; onAdd:
     const groups = useMemo(() => {
         if (!index || !skins) return [];
         const q = query.trim().toLowerCase();
-        const shown = skins.filter((s) => (!q || s.n.toLowerCase().includes(q) || (s.s ?? '').toLowerCase().includes(q)) && (!weapon || s.w === weapon) && (!rarity || s.t === rarity));
+        const shown = skins.filter(
+            (s) =>
+                (!q || s.n.toLowerCase().includes(q) || (s.s ?? '').toLowerCase().includes(q)) &&
+                (weapon.length === 0 || weapon.includes(s.w)) &&
+                (rarity.length === 0 || (s.t !== null && rarity.includes(s.t))) &&
+                (!onlyWatched || isWished(s.n, wishlist)),
+        );
         const by = new Map<string, Skin[]>();
         for (const s of shown) {
             const key = group === 0 ? s.w : group === 1 ? (index.tier(s.t)?.name ?? 'Other') : (s.s ?? 'Other');
@@ -42,12 +50,16 @@ export function Catalog(props: { index: Index | null; wishlist: string[]; onAdd:
         const order = group === 0 ? (a: string, b: string) => weaponRank(a) - weaponRank(b) : group === 1 ? (a: string, b: string) => rank(b) - rank(a) : (a: string, b: string) => a.localeCompare(b);
         // Rarest first for rarities; each group sorted by name.
         return [...by.entries()].sort(([a], [b]) => order(a, b)).map(([name, list]) => [name, list.sort((a, b) => a.n.localeCompare(b.n))] as const);
-    }, [index, skins, query, weapon, rarity, group, tiers]);
+    }, [index, skins, query, weapon, rarity, onlyWatched, wishlist, group, tiers]);
+    const shown = groups.reduce((n, [, list]) => n + list.length, 0);
+    const filtered = weapon.length + rarity.length > 0 || onlyWatched || query.trim() !== '';
+    const toggle = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
+    const clear = () => (setWeapon([]), setRarity([]), setOnlyWatched(false), setQuery(''));
 
     return (
         <div className="screen">
             <header>
-                <Label>{skins ? `${skins.length} skins in the game` : 'Every skin in the game'}</Label>
+                <Label>{!skins ? 'Every skin in the game' : filtered ? `${shown} of ${skins.length} skins` : `${skins.length} skins in the game`}</Label>
                 <h1 className="title">Catalog</h1>
             </header>
             {!index || !skins ? (
@@ -63,16 +75,24 @@ export function Catalog(props: { index: Index | null; wishlist: string[]; onAdd:
                         <Segmented label="Group by" items={GROUPS} selected={group} onSelect={setGroup} />
                     </div>
                     <div className="chips">
-                        <Chip text="All weapons" on={weapon === null} onClick={() => setWeapon(null)} />
+                        <Chip text="All weapons" on={weapon.length === 0} onClick={() => setWeapon([])} />
                         {weapons.map((w) => (
-                            <Chip key={w} text={w} on={weapon === w} onClick={() => setWeapon(weapon === w ? null : w)} />
+                            <Chip key={w} text={w} on={weapon.includes(w)} onClick={() => setWeapon(toggle(weapon, w))} />
                         ))}
                     </div>
                     <div className="chips">
-                        <Chip text="All rarities" on={rarity === null} onClick={() => setRarity(null)} />
+                        <Chip text="All rarities" on={rarity.length === 0} onClick={() => setRarity([])} />
                         {tiers.map((t) => (
-                            <Chip key={t.id} text={t.name} on={rarity === t.id} dot={t.color} onClick={() => setRarity(rarity === t.id ? null : t.id)} />
+                            <Chip key={t.id} text={t.name} on={rarity.includes(t.id)} dot={t.color} onClick={() => setRarity(toggle(rarity, t.id))} />
                         ))}
+                    </div>
+                    <div className="chips">
+                        <Chip text="On my wishlist" on={onlyWatched} onClick={() => setOnlyWatched(!onlyWatched)} />
+                        {filtered && (
+                            <button className="chip chip-clear" onClick={clear}>
+                                Clear filters
+                            </button>
+                        )}
                     </div>
                     {groups.length === 0 && <p className="empty-note dashed">No skin matches. Try another word or clear a filter.</p>}
                     {groups.map(([name, list]) => (

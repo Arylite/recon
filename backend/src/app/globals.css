@@ -591,6 +591,10 @@ textarea:focus-visible {
   border-radius: 50%;
   background: var(--tint);
 }
+.chip-clear {
+  border-style: dashed;
+  color: var(--mute);
+}
 .chip-quick {
   min-height: 46px;
   padding: 0 16px;
