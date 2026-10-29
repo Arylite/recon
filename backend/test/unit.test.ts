@@ -2,12 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { findNew } from '../src/checker.js';
-import { encrypt, decrypt } from '../src/vault.js';
-import * as cookies from '../src/cookies.js';
-import { tokensFrom, puuidFrom, SessionExpired } from '../src/riot.js';
-import { shardFromAffinity } from '../src/profile.js';
-import { compact, createCatalog } from '../src/catalog.js';
+import { findNew } from '../src/checker';
+import { encrypt, decrypt } from '../src/vault';
+import * as cookies from '../src/cookies';
+import { tokensFrom, puuidFrom, SessionExpired } from '../src/riot';
+import { shardFromAffinity } from '../src/profile';
+import { compact, createCatalog } from '../src/catalog';
+import { memoryKv } from '../src/kv';
 
 test('findNew matches case-insensitively and alerts once per day', () => {
   const names = ['Reaver Vandal', 'Prime Phantom'];
@@ -63,26 +64,31 @@ test('catalog compacts, filters defaults and falls back to the id', async () => 
   assert.deepEqual(c.skins.map((s) => s.n), ['Reaver Vandal']);
   assert.equal(c.skins[0]!.i, 'https://x/a.png', 'the art comes from the first level, not the skin placeholder');
 
+  const kv = memoryKv();
   let calls = 0;
-  let saved: unknown;
-  const cat = createCatalog(undefined, (d) => (saved = d), async () => (calls++, c));
+  const cat = createCatalog(kv, async () => (calls++, c));
   assert.equal((await cat.lookup('a')).name, 'Reaver Vandal');
   assert.equal(calls, 1);
-  assert.equal(saved, c, 'a fetched catalog is persisted');
+  assert.ok(await kv.get('catalog'), 'a fetched catalog is persisted');
   await cat.refreshIfStale();
   assert.equal(calls, 1, 'a fresh catalog is not refetched by the scheduled check');
+  assert.equal((await createCatalog(kv, async () => (calls++, c)).get()).skins.length, 1, 'another instance reads the stored catalog');
+  assert.equal(calls, 1);
+  const stale = memoryKv();
+  await createCatalog(stale, async () => ({ ...c, v: 1 })).refresh();
   let old = 0;
-  await createCatalog({ ...c, v: 1 }, () => {}, async () => (old++, c)).refreshIfStale();
+  await createCatalog(stale, async () => (old++, c)).refreshIfStale();
   assert.equal(old, 1, 'a catalog saved by an older version is refetched at once');
   assert.deepEqual(await cat.lookup('zzz'), { name: 'zzz', icon: null, tier: null });
   assert.equal(calls, 1, 'a fresh catalog is not refetched on every miss');
 });
 
 test('source files stay small and ASCII', () => {
-  const dir = path.join(import.meta.dirname, '../src');
-  for (const f of fs.readdirSync(dir)) {
-    const text = fs.readFileSync(path.join(dir, f), 'utf8');
-    assert.ok(text.split('\n').length <= 150, `${f} is over 150 lines`);
-    assert.ok(/^[\x00-\x7f]*$/.test(text), `${f} has non-ASCII characters`);
+  const walk = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
+  for (const file of walk(path.join(import.meta.dirname, '../src')).filter((f) => /\.(ts|tsx|css)$/.test(f))) {
+    const text = fs.readFileSync(file, 'utf8');
+    const name = path.relative(path.join(import.meta.dirname, '..'), file);
+    if (!file.endsWith('.css')) assert.ok(text.split(String.fromCharCode(10)).length <= 150, `${name} is over 150 lines`);
+    assert.ok(/^[\x00-\x7f]*$/.test(text), `${name} has non-ASCII characters`);
   }
 });

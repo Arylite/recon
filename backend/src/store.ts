@@ -1,6 +1,6 @@
-import { request } from './http.js';
-import type { Creds } from './riot.js';
-import type { Shard } from './types.js';
+import { plain, request } from './http';
+import type { Creds } from './riot';
+import type { Shard } from './types';
 
 const PLATFORM = Buffer.from(
   JSON.stringify({
@@ -16,7 +16,7 @@ let clientVersion: string | undefined;
 async function getVersion(): Promise<string> {
   if (!clientVersion) {
     const url = 'https://valorant-api.com/v1/version';
-    const r = await request(url);
+    const r = await plain(url);
     if (r.status !== 200) throw new Error(`${url} answered ${r.status}`);
     clientVersion = (JSON.parse(r.text) as { data: { riotClientVersion: string } }).data.riotClientVersion;
   }

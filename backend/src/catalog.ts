@@ -1,11 +1,14 @@
-import { request } from './http.js';
-import type { Offer } from './types.js';
+import zlib from 'node:zlib';
+import { plain } from './http';
+import type { Kv } from './kv';
+import type { Offer } from './types';
 
 const BASE = 'https://valorant-api.com/v1';
 // Bump when compact() changes, so servers refetch instead of waiting a day.
 const VERSION = 4;
 const DAY = 24 * 3600 * 1000;
 const MISS_RETRY = 10 * 60 * 1000;
+const LOCAL_MS = 5 * 60 * 1000;
 
 export interface CatalogData {
   /** Shape of the data; a saved catalog of an older version is fetched again. */
@@ -44,15 +47,18 @@ interface ApiSkin {
 }
 
 export interface Catalog {
-  readonly data: CatalogData;
+  /** The catalog; fetched on the spot the first time, when none is stored yet. */
+  get: () => Promise<CatalogData>;
   refresh: () => Promise<void>;
   lookup: (uuid: string) => Promise<Omit<Offer, 'cost'>>;
   /** Refreshes when the catalog is over a day old; called on every scheduled check. */
   refreshIfStale: () => Promise<void>;
 }
 
+const report = (e: unknown) => console.error('catalog refresh failed:', e, (e as { cause?: unknown }).cause);
+
 async function get<T>(p: string): Promise<T> {
-  const r = await request(`${BASE}${p}`);
+  const r = await plain(`${BASE}${p}`);
   if (r.status !== 200) throw new Error(`${p} answered ${r.status}`);
   return (JSON.parse(r.text) as { data: T }).data;
 }
@@ -78,38 +84,56 @@ export async function fetchCatalog(): Promise<CatalogData> {
   return compact(tiers, weapons, themes);
 }
 
-export function createCatalog(
-  saved: CatalogData | undefined,
-  persist: (d: CatalogData) => void,
-  fetcher: () => Promise<CatalogData> = fetchCatalog,
-): Catalog {
-  let data: CatalogData = saved ?? { updated: 0, tiers: [], skins: [] };
-  const build = (d: CatalogData) => new Map(d.skins.map((s) => [s.l, s]));
-  let index = build(data);
+// Gzipped so the value stays far below the size limit of a Redis request.
+const pack = (d: CatalogData) => zlib.gzipSync(JSON.stringify(d)).toString('base64');
+const unpack = (s: string) => JSON.parse(zlib.gunzipSync(Buffer.from(s, 'base64')).toString('utf8')) as CatalogData;
+
+export function createCatalog(kv: Kv, fetcher: () => Promise<CatalogData> = fetchCatalog): Catalog {
+  let data: CatalogData | undefined;
+  let index = new Map<string, CatalogData['skins'][number]>();
+  let loadedAt = 0;
   let pending: Promise<void> | undefined;
 
+  const use = (d: CatalogData) => {
+    data = d;
+    index = new Map(d.skins.map((s) => [s.l, s]));
+    loadedAt = Date.now();
+  };
+  // A warm instance keeps its copy for a few minutes before asking Redis again.
+  const load = async () => {
+    if (!data || Date.now() - loadedAt > LOCAL_MS) {
+      const blob = await kv.get<string>('catalog');
+      use(blob ? unpack(blob) : { updated: 0, tiers: [], skins: [] });
+    }
+    return data as CatalogData;
+  };
   const refresh = () =>
     (pending ??= fetcher()
-      .then((fresh) => {
-        data = fresh;
-        index = build(fresh);
-        persist(fresh);
+      .then(async (fresh) => {
+        await kv.set('catalog', pack(fresh));
+        use(fresh);
       })
       .finally(() => {
         pending = undefined;
       }));
 
   return {
-    get data() {
-      return data;
+    async get() {
+      const d = await load();
+      if (!d.skins.length) await refresh().catch(report);
+      return data as CatalogData;
     },
     refresh,
     // A skin missing from the catalog means a new release: refresh once, then fall back to the id.
     async lookup(uuid) {
-      if (!index.has(uuid) && Date.now() - data.updated > MISS_RETRY) await refresh().catch(() => {});
+      const d = await load();
+      if (!index.has(uuid) && Date.now() - d.updated > MISS_RETRY) await refresh().catch(report);
       const s = index.get(uuid);
       return s ? { name: s.n, icon: s.i, tier: s.t } : { name: uuid, icon: null, tier: null };
     },
-    refreshIfStale: () => (data.v !== VERSION || Date.now() - data.updated > DAY ? refresh() : Promise.resolve()),
+    async refreshIfStale() {
+      const d = await load();
+      if (d.v !== VERSION || Date.now() - d.updated > DAY) await refresh();
+    },
   };
 }

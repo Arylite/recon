@@ -47,12 +47,3 @@ export interface User {
   alerts: Alert[];
   lastAlertId: number;
 }
-
-export interface State {
-  users: User[];
-}
-
-export interface Db {
-  state: State;
-  save: () => void;
-}

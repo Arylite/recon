@@ -40,3 +40,18 @@ export function request(url: string, { method = 'GET', headers = {}, body }: Htt
     req.end(body);
   });
 }
+
+/**
+ * For hosts that do not care about the TLS fingerprint (valorant-api.com): the platform's own fetch.
+ * Some connections from serverless networks time out at random, so it tries again.
+ */
+export async function plain(url: string, tries = 3): Promise<{ status: number; text: string }> {
+  for (let i = 1; ; i++) {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      return { status: r.status, text: await r.text() };
+    } catch (e) {
+      if (i >= tries) throw e;
+    }
+  }
+}

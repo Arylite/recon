@@ -1,7 +1,7 @@
-import { request } from './http.js';
-import { reauth, type Creds } from './riot.js';
-import { fetchOffers } from './store.js';
-import { SHARDS, type Shard } from './types.js';
+import { request } from './http';
+import { reauth, type Creds } from './riot';
+import { fetchOffers } from './store';
+import { SHARDS, type Shard } from './types';
 
 const PAS = 'https://riot-geo.pas.si.riotgames.com/pas/v1/product/valorant';
 const USERINFO = 'https://auth.riotgames.com/userinfo';

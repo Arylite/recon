@@ -1,11 +1,13 @@
 import crypto from 'node:crypto';
 
-const TGT_MS = 90 * 24 * 3600 * 1000;
 const TICKET_MS = 3600 * 1000;
 // OWASP 2023 figure for pbkdf2-sha256; about 0.1 s per login on a small server.
 const ROUNDS = 310_000;
 
 export const sha256 = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
+
+/** Constant-time string comparison, whatever the lengths. */
+export const safeEqual = (a: string, b: string) => crypto.timingSafeEqual(crypto.createHash('sha256').update(a).digest(), crypto.createHash('sha256').update(b).digest());
 
 export function hashPassword(password: string, salt = crypto.randomBytes(16).toString('hex')): string {
   return `${salt}:${crypto.pbkdf2Sync(password, salt, ROUNDS, 32, 'sha256').toString('hex')}`;
@@ -19,9 +21,9 @@ export function checkPassword(password: string, stored: string): boolean {
 }
 
 /** A ticket-granting ticket: long-lived, random, stored hashed so a leaked state cannot replay it. */
-export function newTgt(now = Date.now()) {
+export function newTgt(ttlMs: number, now = Date.now()) {
   const tgt = crypto.randomBytes(32).toString('base64url');
-  return { tgt, stored: { hash: sha256(tgt), exp: now + TGT_MS } };
+  return { tgt, stored: { hash: sha256(tgt), exp: now + ttlMs } };
 }
 
 const sign = (body: string, secret: string) => crypto.createHmac('sha256', `ticket:${secret}`).update(body).digest('base64url');

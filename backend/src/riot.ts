@@ -1,5 +1,5 @@
-import { request } from './http.js';
-import * as cookies from './cookies.js';
+import { request } from './http';
+import * as cookies from './cookies';
 
 const AUTH_URL =
   'https://auth.riotgames.com/authorize?redirect_uri=https%3A%2F%2Fplayvalorant.com%2Fopt_in' +
