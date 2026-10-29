@@ -893,10 +893,11 @@ textarea:focus-visible {
   }
 }
 @media (hover: hover) {
+  /* Not the selected one: its text is dark on a bone fill and must stay so. */
   .iconbtn:hover,
-  .segmented button:hover,
-  .chip:hover,
-  .navbar button:hover {
+  .segmented button[aria-checked='false']:hover,
+  .chip:not([aria-pressed='true']):hover,
+  .navbar button:not([aria-current]):hover {
     color: var(--bone);
   }
   .product:hover,

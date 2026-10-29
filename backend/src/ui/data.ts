@@ -1,7 +1,28 @@
 import type { Catalog, Skin, Tier } from './api';
 
 // Buy-menu order; a weapon added to the game later goes at the end.
-const WEAPONS = ['Classic', 'Shorty', 'Frenzy', 'Ghost', 'Bandit', 'Sheriff', 'Stinger', 'Spectre', 'Bucky', 'Judge', 'Bulldog', 'Guardian', 'Phantom', 'Vandal', 'Marshal', 'Outlaw', 'Operator', 'Ares', 'Odin', 'Melee'];
+const WEAPONS = [
+  'Classic',
+  'Shorty',
+  'Frenzy',
+  'Ghost',
+  'Bandit',
+  'Sheriff',
+  'Stinger',
+  'Spectre',
+  'Bucky',
+  'Judge',
+  'Bulldog',
+  'Guardian',
+  'Phantom',
+  'Vandal',
+  'Marshal',
+  'Outlaw',
+  'Operator',
+  'Ares',
+  'Odin',
+  'Melee',
+];
 export const weaponRank = (name: string) => {
   const i = WEAPONS.indexOf(name);
   return i < 0 ? WEAPONS.length : i;
