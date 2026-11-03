@@ -1,9 +1,10 @@
 name: Check stores
 
-# Vercel's free plan only runs a cron job once a day, so GitHub calls the backend every 15 minutes.
+# The phones ask for a check every 15 minutes; this hourly run covers web-only users and is cheap:
+# a store already read today comes from the cache, so Riot is only called once a day per account.
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '5 * * * *'
   workflow_dispatch:
 
 permissions: {}

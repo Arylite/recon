@@ -66,7 +66,7 @@ export function Accounts(props: {
                     <Label className="spaced">How it works</Label>
                     <ul className="steps card">
                         <Step icon="accounts" text="You sign in on Riot's own page. Recon never sees your password." />
-                        <Step icon="refresh" text="Recon looks at your store every 15 minutes, even with the tab closed." />
+                        <Step icon="refresh" text="Recon looks at your store every hour, even with the tab closed." />
                         <Step icon="wishlist" text="A skin from your wishlist shows up: you get a notification." />
                     </ul>
                     {notifier.supported && (

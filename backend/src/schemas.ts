@@ -9,3 +9,4 @@ export const credentials = z.object({
 export const accountBody = z.object({ name: name.optional(), cookies: z.string().max(8000).includes('ssid=') });
 export const wishBody = z.object({ name });
 export const alertsQuery = z.object({ since: z.coerce.number().int().min(0).default(0) });
+export const refreshQuery = z.object({ force: z.enum(['0', '1']).default('0').transform((f) => f === '1') });

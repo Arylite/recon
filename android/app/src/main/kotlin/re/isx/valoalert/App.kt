@@ -225,7 +225,7 @@ fun App(prefs: Prefs) {
                     Column {
                         Crossfade(tab, Modifier.weight(1f), tween(180), label = "tab") { t ->
                             when (t) {
-                                Tab.Store -> StoreScreen(accounts, wishlist, catalog, loaded, ::refresh, { login = true }) { open = it }
+                                Tab.Store -> StoreScreen(accounts, wishlist, catalog, loaded, { act("Reading your store") { it.checkStores(force = true) } }, { login = true }) { open = it }
                                 Tab.Catalog -> CatalogScreen(catalog, wishlist, ::addWish, ::removeWish) { open = it }
                                 Tab.Wishlist -> WishlistScreen(wishlist, catalog, ::addWish, ::removeWish)
                                 Tab.Accounts ->

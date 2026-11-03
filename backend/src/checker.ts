@@ -18,6 +18,7 @@ interface Outcome {
   was: string;
   cookies?: string;
   offers?: Offer[];
+  day?: string;
   notified?: string[];
   fresh?: string[];
   error: string | null;
@@ -26,8 +27,9 @@ interface Outcome {
 /**
  * Reads the store of every account of one user. The Riot calls run unlocked, then the result is
  * merged into the current document, so a change the user made meanwhile is never lost.
+ * A store already read today is reused unless `force` is set: it only rotates at 00:00 UTC.
  */
-export async function checkUser(db: Db, secret: string, catalog: Catalog, id: string): Promise<void> {
+export async function checkUser(db: Db, secret: string, catalog: Catalog, id: string, force = false): Promise<void> {
   // Riot rotates the session cookie on every login: two parallel checks would break the account.
   const unlock = await db.tryLock(`check:${id}`, 120);
   if (!unlock) return;
@@ -38,11 +40,17 @@ export async function checkUser(db: Db, secret: string, catalog: Catalog, id: st
     const outcomes: Outcome[] = [];
     for (const acc of user.accounts) {
       try {
+        // Still today's store: only the wishlist is matched again, Riot is left alone.
+        if (!force && acc.day === day && acc.error === null && acc.offers.length > 0) {
+          const { fresh, notified } = findNew(acc.offers.map((o) => o.name), user.wishlist, acc.notified, day);
+          outcomes.push({ id: acc.id, was: acc.cookies, cookies: acc.cookies, offers: acc.offers, day, notified, fresh, error: null });
+          continue;
+        }
         const creds = await reauth(decrypt(acc.cookies, secret));
         const offers = await Promise.all((await fetchOffers(creds, acc.shard)).map(async (o) => ({ ...(await catalog.lookup(o.uuid)), cost: o.cost })));
         const { fresh, notified } = findNew(offers.map((o) => o.name), user.wishlist, acc.notified, day);
         console.log(`check ${user.name}/${acc.name}: ${offers.length} offers, ${fresh.length} new wishlist hits`);
-        outcomes.push({ id: acc.id, was: acc.cookies, cookies: encrypt(creds.cookies, secret), offers, notified, fresh, error: null });
+        outcomes.push({ id: acc.id, was: acc.cookies, cookies: encrypt(creds.cookies, secret), offers, day, notified, fresh, error: null });
       } catch (e) {
         const error = e instanceof Error ? e.message : String(e);
         console.error(`check ${user.name}/${acc.name} failed: ${error}`);
@@ -55,7 +63,7 @@ export async function checkUser(db: Db, secret: string, catalog: Catalog, id: st
         if (!acc || acc.cookies !== o.was) continue;
         acc.error = o.error;
         if (o.error !== null) continue;
-        Object.assign(acc, { cookies: o.cookies, offers: o.offers, notified: o.notified });
+        Object.assign(acc, { cookies: o.cookies, offers: o.offers, day: o.day, notified: o.notified });
         for (const skin of o.fresh ?? []) u.alerts.push({ id: ++u.lastAlertId, ts: Date.now(), account: acc.name, skin });
       }
       u.alerts = u.alerts.slice(-200);

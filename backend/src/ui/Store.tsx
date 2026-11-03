@@ -43,7 +43,7 @@ const Empty = ({ onAdd }: { onAdd: () => void }) => (
                 </div>
             ))}
         </div>
-        <EmptyState title="Your four daily skins land here" text="Add your Riot account and Recon checks your store every 15 minutes, even with the tab closed.">
+        <EmptyState title="Your four daily skins land here" text="Add your Riot account and Recon checks your store every hour, even with the tab closed.">
             <PillButton onClick={onAdd}>Add a Riot account</PillButton>
         </EmptyState>
     </div>

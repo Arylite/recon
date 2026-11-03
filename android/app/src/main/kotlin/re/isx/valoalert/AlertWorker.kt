@@ -44,6 +44,8 @@ class AlertWorker(
         return try {
             // Keeps the skin catalog (names, art, tiers) fresh even if the app is never opened.
             withContext(Dispatchers.IO) { CatalogCache.refresh(context, api) }
+            // The phone drives the checks: the server answers from today's cache, Riot is read once a day.
+            withContext(Dispatchers.IO) { api.checkStores() }
             val alerts = withContext(Dispatchers.IO) { api.alerts(maxOf(prefs.lastAlertId, 0)) }
             // First poll after setup: remember the position instead of replaying old alerts.
             if (prefs.lastAlertId >= 0) alerts.forEach(::show)

@@ -18,6 +18,8 @@ export interface Account {
   /** Riot cookies, encrypted with SECRET. */
   cookies: string;
   offers: Offer[];
+  /** UTC day (YYYY-MM-DD) the offers were read from Riot; the store only rotates at 00:00 UTC. */
+  day?: string;
   /** `day|skin name` keys already alerted, so a skin alerts once per day. */
   notified: string[];
   error: string | null;

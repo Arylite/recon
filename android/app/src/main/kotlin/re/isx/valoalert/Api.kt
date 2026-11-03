@@ -161,6 +161,11 @@ class Api(
         call("DELETE", "/accounts/$id")
     }
 
+    /** Has the server check the stores; [force] reads Riot again instead of today's cached store. */
+    fun checkStores(force: Boolean = false) {
+        call("POST", "/accounts/refresh?force=${if (force) 1 else 0}")
+    }
+
     fun wishlist(): List<String> = JSONArray(call("GET", "/wishlist")).let { a -> (0 until a.length()).map { a.getString(it) } }
 
     fun addWish(name: String) {

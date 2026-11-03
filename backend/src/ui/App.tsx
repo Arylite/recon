@@ -39,7 +39,7 @@ function Shell({ user, onSignedOut }: { user: string; onSignedOut: () => void })
                 <div className="app">
                     <div key={tab} className="fade">
                         {tab === 'store' && (
-                            <Store accounts={r.accounts} wishlist={r.wishlist} index={index} loaded={r.loaded} onRefresh={() => void r.refresh()} onAdd={() => setAdding(true)} onOpen={setOpen} />
+                            <Store accounts={r.accounts} wishlist={r.wishlist} index={index} loaded={r.loaded} onRefresh={r.forceRefresh} onAdd={() => setAdding(true)} onOpen={setOpen} />
                         )}
                         {tab === 'catalog' && <Catalog index={index} wishlist={r.wishlist} smart={smart} onSmart={setSmart} onAdd={r.addWish} onRemove={r.removeWish} onOpen={setOpen} />}
                         {tab === 'wishlist' && <Wishlist wishlist={r.wishlist} index={index} onAdd={r.addWish} onRemove={r.removeWish} />}

@@ -19,6 +19,8 @@ export interface Deps {
   verify: (cookies: string) => Promise<Verified>;
   /** Called after a change that deserves an immediate check of this user's stores. */
   onChange: (userId: string) => void;
+  /** Checks this user's stores now; `force` reads Riot even when today's store is known. */
+  checkUser: (userId: string, force: boolean) => Promise<void>;
   checkAll: () => Promise<void>;
   /** False once the people who should have an account have one. */
   registration: boolean;
@@ -71,6 +73,7 @@ function build(env = process.env): Deps {
         throw e;
       }),
     onChange: (id) => later(() => checkUser(db, SECRET, catalog, id)),
+    checkUser: (id, force) => checkUser(db, SECRET, catalog, id, force),
     checkAll: run,
     registration: env.ALLOW_REGISTRATION !== 'false',
   };

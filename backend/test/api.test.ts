@@ -50,7 +50,7 @@ function setup(over: Partial<Deps> = {}) {
     if (cookies.includes('bad')) throw new Error('Riot session expired');
     return { cookies: `${cookies}; rotated=1`, puuid: 'puuid-1', shard: 'eu' as const, name: 'Isaac#EUW' };
   };
-  const deps: Deps = { db, kv, token: 'key', secret: 'sec', cronSecret: CRON, catalog, verify, onChange: (id) => changed.push(id), checkAll: async () => void checks++, registration: true, ...over };
+  const deps: Deps = { db, kv, token: 'key', secret: 'sec', cronSecret: CRON, catalog, verify, onChange: (id) => changed.push(id), checkUser: async () => {}, checkAll: async () => void checks++, registration: true, ...over };
   useServices(deps);
 
   const call = (h: Handler, method: string, url: string, { body, auth = '', key = 'key', headers = {}, params = {} }: Opts = {}) =>

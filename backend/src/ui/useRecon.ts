@@ -82,6 +82,8 @@ export function useRecon(user: string) {
     setAccounts((all) => [...all, { id: `${PENDING}${Date.now()}`, name: 'Riot account', shard: 'eu', offers: [], error: null }]);
     void send(() => api('/accounts', 'POST', { cookies }), 'Signing in to Riot');
   };
+  // The refresh button: the server reads Riot again instead of answering from today's cache.
+  const forceRefresh = () => void send(() => api('/accounts/refresh?force=1', 'POST'), 'Reading your store');
   const testAlert = () => {
     setNote('Test notification sent. It shows up in a few seconds.');
     void send(() => api('/alerts/test', 'POST'));
@@ -115,5 +117,5 @@ export function useRecon(user: string) {
     return () => clearTimeout(t);
   }, [note]);
 
-  return { accounts, wishlist, alerts, catalog, loaded, message, note, busy, setMessage, refresh, addWish, removeWish, removeAccount, addAccount, testAlert };
+  return { accounts, wishlist, alerts, catalog, loaded, message, note, busy, setMessage, refresh, forceRefresh, addWish, removeWish, removeAccount, addAccount, testAlert };
 }
